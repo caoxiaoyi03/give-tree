@@ -196,7 +196,10 @@ class GiveTree {
         this._insertSingleRange(data, range,
           Array.isArray(props) ? props[index] : props)
       } catch (err) {
-        err.message = '[insert] ' + err.message + '\n' + err.stack
+        err.message = '[insert] ' + err.message +
+          '\nRange: ' + range.regionToString() +
+          '\nData (first 3): ' + JSON.stringify(data.slice(0, 3)) +
+          '\nStack: ' + err.stack
         exceptions.push(err)
         return null
       }
@@ -206,8 +209,6 @@ class GiveTree {
         (prevMessage, currErr) => (prevMessage + '\n' + currErr.message),
         'Exception occured during insertion:'
       )
-      giveBasic._verbConsole.warn(message)
-      giveBasic.fireSignal('give-warning', { msg: message }, null, this)
       throw new Error(message)
     }
   }
@@ -297,12 +298,6 @@ class GiveTree {
           : this.coveringRange
         return this._traverse(chrRange, callback, filter,
           breakOnFalse, props, ...args)
-      } catch (err) {
-        giveBasic._verbConsole.warn(err)
-        giveBasic.fireSignal('give-warning', { msg: err.toString() }, null,
-          this)
-        throw err
-        // return false
       } finally {
         // 2. try to find any child that is too old
         //    (`this._currGen - birthGen > this.lifeSpan`) and remove them.

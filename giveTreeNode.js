@@ -19,11 +19,8 @@
  * Node interface for GIVE Trees
  *
  * @typedef {object} GiveTreeNode
-
-  * @interface GiveTreeNode
-  *
-  * @constructor
-  */
+ * @interface
+ */
 class GiveTreeNode {
   /**
    * hasData - whether this data node has data stored.

@@ -18,6 +18,21 @@
 var GiveTreeNode = require('./giveTreeNode')
 
 /**
+ * Specialized error used to signal cross-generation balancing requirements.
+ *
+ * @class CannotBalanceError
+ * @extends {Error}
+ */
+class CannotBalanceError extends Error {
+  constructor () {
+    super(...arguments)
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, CannotBalanceError)
+    }
+  }
+}
+
+/**
  * Non-leaf nodes for GIVE Trees
  * This is an interface for all nodes that belongs to GIVE Trees, including
  * insertion, deletion, traversing, and other functionalities.
@@ -29,7 +44,7 @@ var GiveTreeNode = require('./giveTreeNode')
  * @typedef {object} GiveNonLeafNode
  *
  * @interface GiveNonLeafNode
- * @implements GiveTreeNode
+ * @implements {GiveTreeNode}
  *
  */
 class GiveNonLeafNode extends GiveTreeNode {
@@ -439,8 +454,14 @@ class GiveNonLeafNode extends GiveTreeNode {
   }
 
   /**
-   * insert - Insert data under this node
-   * @memberof GiveNonLeafNode.prototype
+   * Insert data under this node.
+   *
+   * If auto-balancing is supported, after `this.insert()` is called, the
+   * immediate children should all be balanced (`this` may still have
+   * non-compliant number of children). If all children insertions
+   * were done with `child.insert()` then the entire tree should be balanced.
+   * If not, then child balancing needs to be done in
+   * `this._addNonLeafRecords`.
    *
    * @param {Array<ChromRegion>} data - the sorted array of data
    *    entries (each should be an extension of `ChromRegion`).
@@ -479,9 +500,10 @@ class GiveNonLeafNode extends GiveTreeNode {
    * @param {function|null} props.LeafNodeCtor - the constructor function of
    *    leaf nodes if they are not the same as the non-leaf nodes.
    *
-   * @returns {GiveNonLeafNode|Array<GiveNonLeafNode>}
+   * @returns {GiveNonLeafNode|false}
    *    This shall reflect whether auto-balancing is supported for the tree.
-   *    See `GiveNonLeafNode.prototype._restructureSingleLayer` for details.
+   *    See `_restructureImmediateChildren` for
+   *    details.
    */
   insert (data, chrRange, props) {
     if (data && data.length === 1 && !chrRange) {
@@ -514,12 +536,13 @@ class GiveNonLeafNode extends GiveTreeNode {
     } else { // chrRange
       throw (new Error(chrRange + ' is not a valid chrRegion.'))
     } // end if(chrRange)
-    return this._restructureSingleLayer()
+    return this.constructor.restructuringRequired
+      ? this._restructureImmediateChildren()
+      : (this.isRoot || !this.isEmpty) && this
   }
 
   /**
-   * _restructure - The function to be called after
-   *    adding/removing data to the node.
+   * The function to be called after adding/removing data to the node.
    *
    * This is used in implementations that involve post-insertion
    *    processes of the tree (for example, rebalancing in B+ tree
@@ -532,7 +555,49 @@ class GiveNonLeafNode extends GiveTreeNode {
    * For trees that do not implement post-insertion processes, return
    *    `this`.
    *
-   * @returns {GiveNonLeafNode|Array<GiveNonLeafNode>|false}
+   * @param {boolean} intermediate - Whether this restructuring is an
+   *    intermediate approach.
+   *
+   *    If this is `true`, then the function is called to rearrange in parent
+   *    nodes because their children cannot get their grandchildren
+   *    conforming to B+ tree requirements. If this is the case, the
+   *    children in this call does not need to completely conform to B+
+   *    tree requirements since the function flow will come back once the
+   *    grandchildren have been rearranged.
+
+   * @returns {GiveNonLeafNode|false}
+   *    This shall reflect whether there are any changes in the tree
+   *    structure for root and non-root nodes:
+   *    * For root nodes, always return `this` (cannot delete root even
+   *      without any children).
+   *    * For inner nodes (or leaf), if the node should be removed (being
+   *      merged with its sibling(s) or becoming an empty node, for
+   *      example), return `false`. Return `this` in all other cases.
+   */
+  _restructureImmediateChildren (intermediate) {
+    // for non-auto-balancing trees, return false if this node has no data
+    //    any more
+    if (this.values[0] && this.values[0].isEmpty) {
+      this.values[0] = false
+    }
+    return (this.isRoot || !this.isEmpty) && this
+  }
+
+  /**
+   * The function to be called after adding/removing data to the node.
+   *
+   * This is used in implementations that involve post-insertion
+   *    processes of the tree (for example, rebalancing in B+ tree
+   *    derivatives).
+   *
+   * The function will only restructure the immediate children of `this`
+   *    or `this` if it is a root node. It will assume all grandchildren
+   *    (if any) has been already restructured correctly.
+   *
+   * For trees that do not implement post-insertion processes, return
+   *    `this`.
+   *
+   * @returns {GiveNonLeafNode|false}
    *    This shall reflect whether there are any changes in the tree
    *    structure for root and non-root nodes:
    *    * For root nodes, always return `this` (cannot delete root even
@@ -544,10 +609,29 @@ class GiveNonLeafNode extends GiveTreeNode {
   _restructure () {
     // for non-auto-balancing trees, return false if this node has no data
     //    any more
-    if (this.values[0] && this.values[0].isEmpty) {
-      this.values[0] = false
+    if (this.constructor.restructuringRequired) {
+      try {
+        if (this.reverseDepth > 0) {
+          let grandChildrenCompliant = false
+          do {
+            try {
+              this.values.forEach(node => node._restructure())
+              grandChildrenCompliant = true
+            } catch (err) {
+              if (err instanceof CannotBalanceError) {
+                this._restructureImmediateChildren(true)
+              }
+            }
+          } while (!grandChildrenCompliant)
+        }
+      } catch (err) {
+        if (err instanceof CannotBalanceError && !this.isRoot) {
+          throw err
+        }
+      }
+      return this._restructureImmediateChildren()
     }
-    return (!this.isRoot && this.isEmpty) ? false : this
+    return (this.isRoot || !this.isEmpty) && this
   }
 
   /**
@@ -853,5 +937,14 @@ class GiveNonLeafNode extends GiveTreeNode {
         !!(this.values[0] && this.values[0].isEmpty)))
   }
 }
+
+/**
+ * @static
+ * @property {boolean} restructuringRequired - Whether restructuring is needed
+ *    for this class of node
+ * @memberof GiveNonLeafNode
+ */
+GiveNonLeafNode.restructuringRequired = false
+GiveNonLeafNode.CannotBalanceError = CannotBalanceError
 
 module.exports = GiveNonLeafNode

@@ -30,7 +30,7 @@
  *
  * @mixin WitheringMixin
  */
-var WitheringMixin = Base => class extends Base {
+const WitheringMixin = Base => class extends Base {
   /**
    * @constructor
    * @param {object} [props] - properties that will be passed to the individual
