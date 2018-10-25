@@ -1,5 +1,5 @@
 # give-tree <!-- omit in toc -->
-Node implementation of interval-tree based cache data structures: GIVE Oak Tree and GIVE Pine Tree
+Node implementation of interval-tree based cache data structures.
 
 - [Install](#install)
 - [Usage](#usage)
