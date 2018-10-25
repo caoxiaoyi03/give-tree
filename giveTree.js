@@ -15,12 +15,16 @@
  * limitations under the License.
  */
 
-var WitheringMixin = require('./witheringMixin')
+/**
+ * @module GiveTree
+ */
+
+const WitheringMixin = require('./witheringMixin')
+const ChromRegion = require('@givengine/chrom-region')
 
 /**
  * Object for data storage, most likely a tree of some sort
- * @typedef {object} GiveTreeBase
- * @class give.GiveTree
+ * @class
  */
 class GiveTree {
   /**

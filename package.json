@@ -1,7 +1,7 @@
 {
-  "name": "give-tree",
-  "version": "0.1.0",
-  "description": "Node implementation of interval-tree based cache data structures: GIVE Oak Tree and GIVE Pine Tree",
+  "name": "@givengine/give-tree",
+  "version": "0.3.0",
+  "description": "Node implementation of interval-tree based cache data structures: base class",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -31,6 +31,7 @@
     "standard": "^12.0.1"
   },
   "dependencies": {
+    "@givengine/chrom-region": "^0.3.0",
     "@log4js-node/log4js-api": "^1.0.2"
   }
 }

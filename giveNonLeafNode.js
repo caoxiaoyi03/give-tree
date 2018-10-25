@@ -15,12 +15,13 @@
  * limitations under the License.
  */
 
-var GiveTreeNode = require('./giveTreeNode')
+const GiveTreeNode = require('./giveTreeNode')
+const ChromRegion = require('@givengine/chrom-region')
 
 /**
  * Specialized error used to signal cross-generation balancing requirements.
  *
- * @class CannotBalanceError
+ * @class
  * @extends {Error}
  */
 class CannotBalanceError extends Error {
@@ -41,9 +42,7 @@ class CannotBalanceError extends Error {
  * (see `DataNode`) only__ will be processed first, then everything in
  * `startList` in all overlapping records will be processed.
  *
- * @typedef {object} GiveNonLeafNode
- *
- * @interface GiveNonLeafNode
+ * @interface
  * @implements {GiveTreeNode}
  *
  */

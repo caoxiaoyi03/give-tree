@@ -15,15 +15,17 @@
  * limitations under the License.
  */
 
-var GiveTreeNode = require('./giveTreeNode')
+const GiveTreeNode = require('./giveTreeNode')
 
 /**
- * Object for data storage
+ * Class for data storage.
+ *
  * Every record will serve as a bin, with a start and end coordinate, and
  * all records combined will serve as a division of the chromosome (no gap,
  * no overlap) with all the start value for dividing points.
  *
  * For example:
+ * ```
  * bins:   << |                      |       |          |       >>
  * Data:   << ------------]
  *            [-----------------]
@@ -35,17 +37,20 @@ var GiveTreeNode = require('./giveTreeNode')
  *                                           [---------------]
  *                                           [----------------- >>
  *                                                      [-]
+ * ```
  *
  * Records can have value of:
+ *
  *    `null`:   data not loaded yet, when upper layer encounter this, the
  *              code there needs to retrieve potential data;
+ *
  *    `false`:  there is no data in this bin;
+ *
  *    A `GIVe.DataNode` instance:
  *              the instance of a class described in this file
  *
- * @class DataNode
- * @typedef {object} GiveDataNodeBase
- * @implements GiveTreeNode
+ * @class
+ * @implements {GiveTreeNode}
  */
 class DataNode extends GiveTreeNode {
   /**
@@ -82,36 +87,6 @@ class DataNode extends GiveTreeNode {
      *    only at the first node. See `GiveDataNode.traverse` for details.
      */
     this.contList = props.contList || []
-  }
-
-  /**
-   * Helper function: find `entries` in `data` that returns `true` with
-   *  `critFunc.call(thisVarCriteria, entry)`, call `callback` on
-   *  `entry` if `callback` exists and advance `currIndex`.
-   *
-   * @static
-   * @param {Array<ChromRegion>} data - the data array to be traversed
-   * @param {Number} currIndex - starting index
-   * @param {Function} critFunc - function to decide whether data meets some
-   *    criteria.
-   * @param {Function} [callback] - function to be called upon all data entries
-   *    that meet the criteria
-   * @returns {Number} the index of the first entry that does not meet the
-   *    criteria
-   * @memberof DataNode
-   */
-  static _traverseData (data, currIndex, critFunc, callback) {
-    // Helper function: find `entries` in `data` that returns `true` with
-    //    `critFunc.call(thisVarCriteria, entry)`, call `callback` on
-    //    `entry` if `callback` exists and advance `currIndex`.
-
-    while (currIndex < data.length && critFunc(data[currIndex])) {
-      if (typeof callback === 'function') {
-        callback(data[currIndex])
-      }
-      currIndex++
-    }
-    return currIndex
   }
 
   /**
