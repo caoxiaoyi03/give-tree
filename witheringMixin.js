@@ -35,19 +35,19 @@ const WitheringMixin = Base => class extends Base {
    * @constructor
    * @param {object} [props] - properties that will be passed to the individual
    *    implementations
-   * @param {Number} [props._currGen] - the current generation
+   * @param {number} [props._currGen] - the current generation
    */
   constructor (props) {
     super(...arguments)
     if ((props && props._currGen) || (this.tree && this.tree.lifeSpan)) {
       /**
-       * @property {Number} \_lastUpdateGen - Last updated generation of this
+       * @property {number} \_lastUpdateGen - Last updated generation of this
        *    node. This value will be updated whenever `.insert()` or
        *    `.traverse()` is called so that active branches won't wither easily.
        *    Because of this, the `_lastUpdateGen` for parents should always be
        *    no earlier than their children (see `this.wither()` for a potential
        *    exception and the solution for that).
-       * @type {Number}
+       * @type {number}
        */
       this._lastUpdateGen = props._currGen || this.tree._currGen
     }

@@ -62,8 +62,8 @@ class DataNode extends GiveTreeNode {
    * @param {number} props.start - for `this.start`
    * @param {Array<ChromRegionLiteral>|null} props.startList - for
    *    `this.startList`
-   * @param {Array<ChromRegionLiteral>|null} props.contList - for
-   *    `this.contList`
+   * @param {Array<ChromRegionLiteral>|null} props.continuedList - for
+   *    `this.continuedList`
    * @memberof DataNode
    */
   constructor (props) {
@@ -80,13 +80,13 @@ class DataNode extends GiveTreeNode {
     this.startList = props.startList || []
 
     /**
-     * @member {Array<ChromRegionLiteral>} contList - A list of data entries
+     * @member {Array<ChromRegionLiteral>} continuedList - A list of data entries
      *    that __continue into__ the start coordinate of this node. This array
      *    will be sorted by the actual starting points, `[]` will have the same
      *    effect as `undefined`. This is used in `GiveDataNode.traverse`
      *    only at the first node. See `GiveDataNode.traverse` for details.
      */
-    this.contList = props.contList || []
+    this.continuedList = props.continuedList || []
   }
 
   /**
@@ -124,7 +124,7 @@ class DataNode extends GiveTreeNode {
    * @param {ChromRegionLiteral} chrRanges - DataNode should not handle
    *    this.
    * @param {object} props - additional properties being passed onto nodes.
-   * @param {Array<ChromRegionLiteral>} props.contList - the list of data
+   * @param {Array<ChromRegionLiteral>} props.continuedList - the list of data
    *    entries that should not start in `chrRange` but are passed from the
    *    earlier regions, this will be useful for later regions if date for
    *    multiple regions are inserted at the same time
@@ -143,7 +143,7 @@ class DataNode extends GiveTreeNode {
   insert (data, chrRange, props) {
     // Steps:
     // 1. Push everything in `data` that has `start` value smaller than
-    //    `this.start` into `contList`
+    //    `this.start` into `continuedList`
     props = props || {}
     var currIndex =
       (typeof props.dataIndex === 'number' ? props.dataIndex : 0)
@@ -151,22 +151,22 @@ class DataNode extends GiveTreeNode {
     currIndex = this.constructor._traverseData(data, currIndex,
       dataEntry => dataEntry.start < this.start, props.callback)
 
-    // 2. Check all `contList` to ensure they still overlap with `this`
+    // 2. Check all `continuedList` to ensure they still overlap with `this`
     //    (getEnd() should be greater than `this.start`), remove those who
-    //    don't, copy those who do to `this.contList`;
-    props.contList = (props.contList || [])
+    //    don't, copy those who do to `this.continuedList`;
+    props.continuedList = (props.continuedList || [])
       .concat(data.slice(prevIndex, currIndex))
       .filter(entry => entry.end > this.start)
-    this.contList = props.contList.slice()
+    this.continuedList = props.continuedList.slice()
 
     // 3. Find all `data` entries that have same `start` value as `this`,
     //    and copy those to `this.startList`, move them from `data` to
-    //    `contList`;
+    //    `continuedList`;
     prevIndex = currIndex
     currIndex = this.constructor._traverseData(data, currIndex,
       dataEntry => dataEntry.start === this.start, props.callback)
     this.startList = data.slice(prevIndex, currIndex)
-    props.contList = props.contList.concat(this.startList)
+    props.continuedList = props.continuedList.concat(this.startList)
 
     if (typeof props.dataIndex !== 'number') {
       // remove data if props.currIndex is not specified
@@ -199,7 +199,7 @@ class DataNode extends GiveTreeNode {
         return true
       })
     }
-    this.contList = this.contList.filter(dataIn => {
+    this.continuedList = this.continuedList.filter(dataIn => {
       if (dataIn.start === data.start && (
         !exactMatch || this._compareData(data, dataIn)
       )) {
@@ -215,14 +215,14 @@ class DataNode extends GiveTreeNode {
 
   clear (convertTo) {
     this.startList = []
-    this.contList = []
+    this.continuedList = []
   }
 
   /**
    * traverse - traverse all nodes / data entries within `this` and calling
    *    functions on them.
    *
-   * When traversing, everything in 'contList' of *the starting record only*
+   * When traversing, everything in 'continuedList' of *the starting record only*
    * will be processed first, then everything in 'startList' in all
    * overlapping records will be processed.
    *
@@ -261,9 +261,9 @@ class DataNode extends GiveTreeNode {
       return this._callFuncOnDataEntry(callback, filter, breakOnFalse,
         entry, props, ...args)
     }
-    // needs to traverse on contList if `!props.notFirstCall`
+    // needs to traverse on continuedList if `!props.notFirstCall`
     if (!props.notFirstCall) {
-      if (!this.contList.every(callFunc)) {
+      if (!this.continuedList.every(callFunc)) {
         return false
       }
     }
@@ -300,13 +300,13 @@ class DataNode extends GiveTreeNode {
 
   /**
    * isEmpty - return whether this node is empty
-   * If there is no entry in both `this.startList` and `this.contList` then
+   * If there is no entry in both `this.startList` and `this.continuedList` then
    *    the node is considered empty.
    *
    * @type {boolean}      whether the node is empty
    */
   get isEmpty () {
-    return this.startList.length <= 0 && this.contList.length <= 0
+    return this.startList.length <= 0 && this.continuedList.length <= 0
   }
 }
 

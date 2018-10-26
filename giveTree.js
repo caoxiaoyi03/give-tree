@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2017 GIVe Authors
+ * Copyright 2017-2018 Xiaoyi Cao
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,14 +25,15 @@ const ChromRegion = require('@givengine/chrom-region')
 /**
  * Object for data storage, most likely a tree of some sort
  * @class
+ * @alias module:GiveTree.GiveTree
  */
 class GiveTree {
   /**
    * Creates an instance of GiveTree.
    *
    * @constructor
-   * @param {ChromRegion} chrRange - The range this data storage unit
-   *    will be responsible for.
+   * @param {ChromRegion} chrRange - The range this data
+   *    storage unit will be responsible for.
    * @param {function} NonLeafNodeCtor - Constructor for `this._root`
    * @param {object} [props] - properties that will be passed to the
    *    individual implementations
@@ -54,11 +55,11 @@ class GiveTree {
     ) {
       props.lifeSpan = props.lifeSpan || this.constructor.DEFAULT_LIFE_SPAN
       /**
-       * @property {Number} _currGen - current generation of the tree
+       * @property {number} _currGen - current generation of the tree
        */
       this._currGen = 0
       /**
-       * @property {Number} lifeSpan - lifespan for all nodes in the tree
+       * @property {number} lifeSpan - lifespan for all nodes in the tree
        */
       this.lifeSpan = props.lifeSpan
       /**
@@ -79,12 +80,12 @@ class GiveTree {
   /**
    * Initialize properties of GiveTree.
    *
-   * @param {ChromRegion} chrRange - The range this data storage unit
-   *    will be responsible for.
+   * @param {ChromRegion} chrRange - The range this data
+   *    storage unit will be responsible for.
    * @param {function} NonLeafNodeCtor - Constructor for `this._root`
    * @param {object} [props] - properties that will be passed to the
    *    individual implementations
-   * @param {function} props.LeafNodeCtor - if omitted, the constructor of
+   * @param {function} [props.LeafNodeCtor] - if omitted, the constructor of
    *    `this.root` will be used
    * @memberof GiveTree
    */
@@ -122,16 +123,16 @@ class GiveTree {
    * Please refer to `this.insert` for parameter annotation
    *
    * @param {Array<ChromRegion>} data
-   * @param {ChromRegion|null} chrRange -
+   * @param {ChromRegion} [chrRange]
    *    the chromosomal range that `data` corresponds to.
-   * @param {Array<ChromRegion>} continuedList
-   * @param {function} [callback]
    * @param {object} [props]
+   * @param {Array<ChromRegion>} [props.continuedList]
+   * @param {function} [props.callback]
    */
   _insertSingleRange (data, chrRange, props) {
     if (!chrRange || !chrRange.chr || chrRange.chr === this.chr) {
       props = props || {}
-      props.contList = props.contList || []
+      props.continuedList = props.continuedList || []
       props.LeafNodeCtor = props.LeafNodeCtor || this._LeafNodeCtor
       chrRange = chrRange
         ? this._root.truncateChrRange(chrRange, true, false)
@@ -143,8 +144,8 @@ class GiveTree {
   /**
    * Insert data entries within chromosomal range(s)
    *
-   * @param {Array<ChromRegion>} data - the sorted array of data
-   *    entries (each should be an extension of `GIVe.ChromRegion`).
+   * @param {Array<ChromRegion>} data - the sorted array of
+   *    data entries (each should be an extension of `ChromRegion`).
    *
    *    `data === null` or `data === []` means there is no data in
    *    `chrRange` and `false`s will be used in actual storage.
@@ -153,8 +154,8 @@ class GiveTree {
    *    here or in `continuedList`, otherwise `continuedList` in data
    *    entries may not work properly.
    *
-   * @param {Array<ChromRegion>|ChromRegion|null} chrRanges -
-   *    the array of chromosomal range(s) that `data` corresponds to.
+   * @param {Array<ChromRegion>|ChromRegion} [chrRanges]
+   *    The array of chromosomal range(s) that `data` corresponds to.
    *    This is used to mark the empty regions correctly. No `null` will
    *    present within these regions after this operation.
    *
@@ -167,22 +168,22 @@ class GiveTree {
    *    If `data.length === 1` and `chrRange === null`, then
    *    `chrRegion = data[0]` because of ChromRegion behavior.
    *
-   * @param {Array<ChromRegion>} continuedList - the list of data
-   *    entries that should not start in `chrRange` but are passed from the
-   *    earlier regions, this will be useful for later regions if data for
-   *    multiple regions are inserted at the same time
-   *
-   * @param {function|null} callback - the callback function to be used
-   *    (with the data entry as its sole parameter) when inserting
-   *
-   * @param {Array<Object>|Object} [props] - additional properties being
+   * @param {Array<object>|object} [props] - additional properties being
    *    passed onto nodes. If this is an `Array`, it should have the same
    *    `length` as `chrRanges` does.
    *
-   * @param {boolean} props.doNotWither - If `true`, the tree will not advance
-   *    its generation or trigger withering.
+   * @param {Array<ChromRegion>} [props.continuedList] - the
+   *    list of data entries that should not start in `chrRange` but are passed
+   *    from the earlier regions, this will be useful for later regions if data
+   *    for multiple regions are inserted at the same time.
    *
-   * @param {function|null} props.LeafNodeCtor - the constructor function of
+   * @param {function} [props.callback] - the callback function to be used
+   *    (with the data entry as its sole parameter) when inserting
+   *
+   * @param {boolean} [props.doNotWither=false] - If `true`, the tree will not
+   *    advance its generation or trigger withering.
+   *
+   * @param {function} [props.LeafNodeCtor] - the constructor function of
    *    leaf nodes if they are not the same as the non-leaf nodes.
    */
   insert (data, chrRanges, props) {
@@ -220,14 +221,15 @@ class GiveTree {
   /**
    * Removing a single data entry.
    *
-   * @param  {ChromRegion} data - the data that needs to be removed
-   * @param  {boolean} [exactMatch] - whether an exact match is needed
+   * @param  {ChromRegion} data - the data that needs to be
+   *    removed.
+   * @param  {boolean} [exactMatch=false] - whether an exact match is needed
    *    to remove the entry. If `true`, then `.equalTo(data)` method (if
    *    exists within the data entry) or `===` (if no `equalTo` method
    *    exists) will be used to evaluate whether a data entry should be
    *    removed. If `false`, then all data entries at the same location
    *    (start and end) will be removed.
-   * @param {boolean} [convertTo] - what shall be used to replace
+   * @param {boolean|null} [convertTo=null] - what shall be used to replace
    *    the removed nodes, should be either `null` (default) or `false`.
    * @param  {function} [callback] - the callback function to be used
    *    (with the data entry as its sole parameter) when the data entry
@@ -270,20 +272,20 @@ class GiveTree {
    * Traverse given chromosomal range to apply functions to all
    * overlapping data entries.
    *
-   * @param {ChromRegion} chrRange - the chromosomal range to
-   *    traverse. If omitted or falsey value is supplied, use the entire
+   * @param {ChromRegion} chrRange - the chromosomal range
+   *    to traverse. If omitted or falsey value is supplied, use the entire
    *    range.
    * @param {function} callback - the callback function to be used (with the
    *    data entry as its sole parameter) on all overlapping data entries
    *    (that pass `filter` if it exists).
-   * @param {function} filter - the filter function to be used (with the
+   * @param {function} [filter] - the filter function to be used (with the
    *    data entry as its sole parameter), return `false` to exclude the
    *    entry from being called with `callback`.
-   * @param {boolean} breakOnFalse - whether the traversing should break if
-   *    `false` has been returned from `callback`
+   * @param {boolean} [breakOnFalse=false] - whether the traversing should break
+   *    if `false` has been returned from `callback`
    * @param {object} [props] - additional properties being passed onto
    *    nodes
-   * @param {boolean} props.doNotWither - If `true`, the tree will not advance
+   * @param {boolean} [props.doNotWither] - If `true`, the tree will not advance
    *    its generation or trigger withering.
    * @returns {boolean} If the traverse breaks on `false`, returns `false`,
    *    otherwise `true`
@@ -317,17 +319,17 @@ class GiveTree {
    * The actual function doing the traversing and should be overriden by sub
    * classes.
    *
-   * @param {ChromRegion} chrRange - the chromosomal range to
-   *    traverse. If omitted or falsey value is supplied, use the entire
+   * @param {ChromRegion} chrRange - the chromosomal range
+   *    to traverse. If omitted or falsey value is supplied, use the entire
    *    range.
    * @param {function} callback - the callback function to be used (with the
    *    data entry as its sole parameter) on all overlapping data entries
    *    (that pass `filter` if it exists).
-   * @param {function} filter - the filter function to be used (with the
+   * @param {function} [filter] - the filter function to be used (with the
    *    data entry as its sole parameter), return `false` to exclude the
    *    entry from being called with `callback`.
-   * @param {boolean} breakOnFalse - whether the traversing should break if
-   *    `false` has been returned from `callback`
+   * @param {boolean} [breakOnFalse=false] - whether the traversing should break
+   *    if `false` has been returned from `callback`
    * @param {object} [props] - additional properties being passed onto
    *    nodes
    * @returns {boolean} If the traverse breaks on `false`, returns `false`,
@@ -342,13 +344,14 @@ class GiveTree {
    * get an array of chrRegions that do not have data ready.
    * This is used for sectional loading.
    *
-   * @param {ChromRegion} chrRange - the chromosomal range to query
+   * @param {ChromRegion} chrRange - the chromosomal range
+   *    to query
    * @param {object} [props] - additional properties being passed onto
    *    nodes
-   * @returns {Array<ChromRegion>} the chromosomal ranges that do not
-   *    have their data ready in this data storage unit (therefore need to
-   *    be fetched from sources). If all the data needed is ready, `[]` will
-   *    be returned.
+   * @returns {Array<ChromRegion>} the chromosomal ranges
+   *    that do not have their data ready in this data storage unit (therefore
+   *    need to be fetched from sources). If all the data needed is ready, `[]`
+   *    will be returned.
    */
   getUncachedRange (chrRange, props) {
     props = props || {}
@@ -366,10 +369,10 @@ class GiveTree {
    * hasUncachedRange - quickly check if the tree has any uncached range
    *    within a specific range.
    * This is used for sectional loading.
-   * @memberof GiveTreeBase.prototype
    *
-   * @param {ChromRegion} chrRange - the chromosomal range to query
-   * @param {Object} [props] - additional properties being passed onto
+   * @param {ChromRegion} chrRange - the chromosomal range
+   *    to query
+   * @param {object} [props] - additional properties being passed onto
    *    nodes
    * @returns {boolean} `true` if the tree has uncached ranges.
    */

@@ -38,7 +38,7 @@ class CannotBalanceError extends Error {
  * This is an interface for all nodes that belongs to GIVE Trees, including
  * insertion, deletion, traversing, and other functionalities.
  *
- * When traversing, everything in `contList` of __the starting record entry
+ * When traversing, everything in `continuedList` of __the starting record entry
  * (see `DataNode`) only__ will be processed first, then everything in
  * `startList` in all overlapping records will be processed.
  *
@@ -48,25 +48,27 @@ class CannotBalanceError extends Error {
  */
 class GiveNonLeafNode extends GiveTreeNode {
   /**
-   * Creates an instance of GiveNonLeafNode.
+   * Creates an instance of GiveNonLeafNode. Note that `props` should either
+   * have both `start` and `end`, or both `keys` and `values` specified in its
+   * properties.
    * @constructor
    * @param {object} props - properties that will be passed to the
    *    individual implementations. For `GiveNonLeafNode`, these
    *    properties will be used:
    * @param {boolean} props.isRoot - for `this.isRoot`
    * @param {GiveTree} props.tree - for `this.tree`
-   * @param {number} props.start - The start coordinate this node will
+   * @param {number} [props.start] - The start coordinate this node will
    *    cover. Equals to `this.keys[0]`.
-   * @param {number} props.end - The end coordinate this node will cover.
+   * @param {number} [props.end] - The end coordinate this node will cover.
    *    Equals to `this.keys[this.keys.length - 1]`.
    *    Exceptions will be thrown if `props.start` or `props.end` is not an
    *    positive integer number or `props.start >= props.end` (zero-length
    *    regions not allowed).
-   * @param {number|null} props.reverseDepth - for `this.reverseDepth`
-   * @param {GiveNonLeafNode|null|boolean} props.nextNode - for `this._next`
-   * @param {GiveNonLeafNode|null|boolean} props.prevNode - for `this._prev`
-   * @param {Array<number>|null} props.keys - for `this.keys`
-   * @param {Array<GiveTreeNode>|null} props.values - for `this.values`
+   * @param {number} [props.reverseDepth] - for `this.reverseDepth`
+   * @param {GiveNonLeafNode|boolean} [props.nextNode] - for `this._next`
+   * @param {GiveNonLeafNode|boolean} [props.prevNode] - for `this._prev`
+   * @param {Array<number>} [props.keys] - for `this.keys`
+   * @param {Array<GiveTreeNode>} [props.values] - for `this.values`.
    *    Note that if `keys` and `values` are provided, `start` and `end`
    *    will be overridden as they are already provided in `keys`.
    * @memberof GiveNonLeafNode
@@ -81,8 +83,8 @@ class GiveNonLeafNode extends GiveTreeNode {
      */
     this.isRoot = !!props.isRoot
     /**
-     * @property {GiveTree} tree - Link to the `GiveTree` object to access tree-
-     *    wise properties.
+     * @property {GiveTree} tree - Link to the `GiveTree` object
+     *    to access tree-wise properties.
      */
     this.tree = props.tree
     if (
@@ -156,9 +158,9 @@ class GiveNonLeafNode extends GiveTreeNode {
    *
    * @param  {ChromRegion} chrRange - The chromosomal range to be
    *    truncated
-   * @param  {boolean} truncStart - Whether to truncate the start coordinate
-   * @param  {boolean} truncEnd   - Whether to truncate the end coordinate
-   * @param  {boolean} doNotThrow - Whether to throw an exception if
+   * @param  {boolean} [truncStart] - Whether to truncate the start coordinate
+   * @param  {boolean} [truncEnd]   - Whether to truncate the end coordinate
+   * @param  {boolean} [doNotThrow] - Whether to throw an exception if
    *    truncated region has a length not greater than 0 (because `chrRange`
    *    does not overlap with this node at all).
    * @returns {ChromRegion}  Returns a new chromosomal range with
@@ -195,7 +197,6 @@ class GiveNonLeafNode extends GiveTreeNode {
 
   /**
    * getLength - get the length of the region covered by this node
-   * @memberof GiveNonLeafNode.prototype
    *
    * @returns {number}  The length of the node
    */
@@ -205,7 +206,6 @@ class GiveNonLeafNode extends GiveTreeNode {
 
   /**
    * get childNum - get the number of children under this node.
-   * @memberof GiveNonLeafNode.prototype
    *
    * @returns {number}  The number of children
    */
@@ -242,7 +242,10 @@ class GiveNonLeafNode extends GiveTreeNode {
       throw new Error(
         'Cannot set the next sibling in an unlinked tree!')
     }
-    this._next = nextNode || null
+    if (nextNode === undefined) {
+      nextNode = null
+    }
+    this._next = nextNode
     if (nextNode) {
       nextNode._prev = this
       if (this.lastChild instanceof GiveNonLeafNode) {
@@ -266,7 +269,10 @@ class GiveNonLeafNode extends GiveTreeNode {
       throw new Error(
         'Cannot set the previous sibling in an unlinked tree!')
     }
-    this._prev = prevNode || null
+    if (prevNode === undefined) {
+      prevNode = null
+    }
+    this._prev = prevNode
     if (prevNode) {
       prevNode._next = this
       if (this.firstChild instanceof GiveNonLeafNode) {
@@ -288,10 +294,10 @@ class GiveNonLeafNode extends GiveTreeNode {
   /**
    * _severeSelfLinks - break links between siblings and `this`
    *
-   * @param  {boolean|null} convertTo convert the link into. Should be
-   *    `undefined` (default), `null` or `false`.
-   * @param  {boolean} noPrev - do not severe links from previous siblings
-   * @param  {boolean} noNext - do not severe links from next siblings
+   * @param  {boolean|null} [convertTo=null] convert the link into. Should be
+   *    `null` (default) or `false`.
+   * @param  {boolean} [noPrev] - do not severe links from previous siblings
+   * @param  {boolean} [noNext] - do not severe links from next siblings
    */
   _severeSelfLinks (convertTo, noPrev, noNext) {
     if (!this.tree.neighboringLinks) {
@@ -313,14 +319,12 @@ class GiveNonLeafNode extends GiveTreeNode {
   /**
    * _severeChildLinks - break links between all children.
    *
-   * @param  {boolean|null} convertTo convert the link into. Should be
+   * @param  {boolean|null} [convertTo=null] convert the link into. Should be
    *    either `null` (default) or `false`.
-   * @param  {boolean} noPrev - do not severe links from previous siblings
-   * @param  {boolean} noNext - do not severe links from next siblings
+   * @param  {boolean} [noPrev] - do not severe links from previous siblings
+   * @param  {boolean} [noNext] - do not severe links from next siblings
    */
-  _severeChildLinks (
-    convertTo, noPrev, noNext
-  ) {
+  _severeChildLinks (convertTo, noPrev, noNext) {
     if (!this.tree.neighboringLinks) {
       throw new Error(
         'No child links to severe in an unlinked tree!')
@@ -341,10 +345,10 @@ class GiveNonLeafNode extends GiveTreeNode {
    * _severeLinks - break links between siblings and `this`, and between all
    *    children as well.
    *
-   * @param  {boolean|null} convertTo convert the link into. Should be
-   *    either `undefined` (default), `null` or `false`.
-   * @param  {boolean} noPrev - do not severe links from previous siblings
-   * @param  {boolean} noNext - do not severe links from next siblings
+   * @param  {boolean|null} [convertTo=null] convert the link into. Should be
+   *    either `null` (default) or `false`.
+   * @param  {boolean} [noPrev] - do not severe links from previous siblings
+   * @param  {boolean} [noNext] - do not severe links from next siblings
    */
   _severeLinks (convertTo, noPrev, noNext) {
     this._severeChildLinks(convertTo, noPrev, noNext)
@@ -355,9 +359,9 @@ class GiveNonLeafNode extends GiveTreeNode {
    * _fixChildLinks - fix sibling links for a specific child.
    *
    * @param  {number} index - the index of the child
-   * @param  {boolean} doNotFixBack - if `true`, the links after this child
+   * @param  {boolean} [doNotFixBack] - if `true`, the links after this child
    *    will not be fixed.
-   * @param  {boolean} doNotFixFront - if `true`, the links before this
+   * @param  {boolean} [doNotFixFront] - if `true`, the links before this
    *    child will not be fixed.
    */
   _fixChildLinks (index, doNotFixBack, doNotFixFront) {
@@ -416,7 +420,6 @@ class GiveNonLeafNode extends GiveTreeNode {
 
   /**
    * _getChildPrev - get the previous sibling of child at `index`.
-   * @memberof GiveNonLeafNode.prototype
    *
    * @param {number} index - index of the child
    * @returns {GiveTreeNode|boolean|null}  the previous sibling of the
@@ -435,7 +438,6 @@ class GiveNonLeafNode extends GiveTreeNode {
 
   /**
    * _getChildNext - get the next sibling of child at `index`.
-   * @memberof GiveNonLeafNode.prototype
    *
    * @param {number} index - index of the child
    * @returns {GiveTreeNode|boolean|null}  the next sibling of the
@@ -485,18 +487,18 @@ class GiveNonLeafNode extends GiveTreeNode {
    *    `{ start: <start coordinate>, end: <end coordinate>, ... }`,
    *    preferably a `ChromRegion` object.
    *
-   * @param {object} props - additional properties being passed onto
+   * @param {object} [props] - additional properties being passed onto
    *    nodes.
    *
-   * @param {Array<ChromRegion>} props.contList - the list of data
+   * @param {Array<ChromRegion>} [props.continuedList] - the list of data
    *    entries that should not start in `chrRange` but are passed from the
    *    earlier regions, this will be useful for later regions if date for
    *    multiple regions are inserted at the same time
    *
-   * @param {function|null} props.callback - the callback function to be
+   * @param {function} [props.callback] - the callback function to be
    *    used (with the data entry as its sole parameter) when inserting
    *
-   * @param {function|null} props.LeafNodeCtor - the constructor function of
+   * @param {function} [props.LeafNodeCtor] - the constructor function of
    *    leaf nodes if they are not the same as the non-leaf nodes.
    *
    * @returns {GiveNonLeafNode|false}
@@ -511,7 +513,7 @@ class GiveNonLeafNode extends GiveTreeNode {
 
     if (data && !Array.isArray(data)) {
       throw (new Error('Data is not an array! ' +
-        'This will cause problems in contList.'))
+        'This will cause problems in continuedList.'))
     }
 
     if (chrRange) {
@@ -641,7 +643,7 @@ class GiveNonLeafNode extends GiveTreeNode {
    *    entries. See `this.insert` for detailed description.
    * @param {ChromRegion} chrRange - see `this.insert`
    * @param {object} props - additional properties being passed onto nodes.
-   * @param {Array<ChromRegion>} props.contList - see `this.insert`
+   * @param {Array<ChromRegion>} props.continuedList - see `this.insert`
    * @param {function|null} props.callback - see `this.insert`
    */
   _addNonLeafRecords (data, chrRange, props) {
@@ -657,7 +659,7 @@ class GiveNonLeafNode extends GiveTreeNode {
    *    entries. See `this.insert` for detailed description.
    * @param {ChromRegion} chrRange - see `this.insert`
    * @param {object} props - additional properties being passed onto nodes.
-   * @param {Array<ChromRegion>} props.contList - see `this.insert`
+   * @param {Array<ChromRegion>} props.continuedList - see `this.insert`
    * @param {function|null} props.callback - see `this.insert`
    * @param {function|null} props.LeafNodeCtor - see `this.insert`
    */
@@ -925,7 +927,7 @@ class GiveNonLeafNode extends GiveTreeNode {
 
   /**
    * isEmpty - return whether this node is empty
-   * If there is no entry in both `this.startList` and `this.contList` then
+   * If there is no entry in both `this.startList` and `this.continuedList` then
    *    the node is considered empty.
    *
    * @returns {boolean}      whether the node is empty
