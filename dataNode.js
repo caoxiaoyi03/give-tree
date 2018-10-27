@@ -13,6 +13,8 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
+ *
+ * @module DataNode
  */
 
 const GiveTreeNode = require('./giveTreeNode')
@@ -41,51 +43,41 @@ const GiveTreeNode = require('./giveTreeNode')
  *
  * Records can have value of:
  *
- *    `null`:   data not loaded yet, when upper layer encounter this, the
- *              code there needs to retrieve potential data;
+ * `null`:   data not loaded yet, when upper layer encounter this, the
+ *           code there needs to retrieve potential data;
  *
- *    `false`:  there is no data in this bin;
+ * `false`:  there is no data in this bin;
  *
- *    A `GIVe.DataNode` instance:
- *              the instance of a class described in this file
+ * A `GIVe.DataNode` instance:
+ *           the instance of a class described in this file
  *
  * @class
+ * @alias module:DataNode
  * @implements {GiveTreeNode}
+ * @property {Array<ChromRegion>} startList - A list of data entries
+ *    that __start exactly at__ the start coordinate of this node.
+ *    `startList` will become an empty array only if the previous bin is
+ *    `null` (because otherwise this bin can be merged with the previous
+ *    one), or this is the first bin of the storage unit;
+ * @property {Array<ChromRegion>} continuedList - A list of data entries
+ *    that __continue into__ the start coordinate of this node. This array
+ *    will be sorted by the actual starting points, `[]` will have the same
+ *    effect as `undefined`. This is used in `GiveDataNode.traverse`
+ *    only at the first node. See `GiveDataNode.traverse` for details.
+ * @param {Object} props - properties that will be passed to the
+ *    individual implementations. For `GIVE.DataNode`, three properties
+ *    will be used:
+ * @param {number} props.start - for `this.start`
+ * @param {Array<ChromRegion>} [props.startList] - for
+ *    `this.startList`
+ * @param {Array<ChromRegion>} [props.continuedList] - for
+ *    `this.continuedList`
  */
 class DataNode extends GiveTreeNode {
-  /**
-   * Creates an instance of DataNode.
-   * @constructor
-   * @param {object} props - properties that will be passed to the
-   *    individual implementations. For `GIVE.DataNode`, three properties
-   *    will be used:
-   * @param {number} props.start - for `this.start`
-   * @param {Array<ChromRegionLiteral>|null} props.startList - for
-   *    `this.startList`
-   * @param {Array<ChromRegionLiteral>|null} props.continuedList - for
-   *    `this.continuedList`
-   * @memberof DataNode
-   */
   constructor (props) {
     super(props)
     this._start = props.start
-
-    /**
-     * @property {Array<ChromRegionLiteral>} startList - A list of data entries
-     *    that __start exactly at__ the start coordinate of this node.
-     *    `startList` will become an empty array only if the previous bin is
-     *    `null` (because otherwise this bin can be merged with the previous
-     *    one), or this is the first bin of the storage unit;
-     */
     this.startList = props.startList || []
-
-    /**
-     * @member {Array<ChromRegionLiteral>} continuedList - A list of data entries
-     *    that __continue into__ the start coordinate of this node. This array
-     *    will be sorted by the actual starting points, `[]` will have the same
-     *    effect as `undefined`. This is used in `GiveDataNode.traverse`
-     *    only at the first node. See `GiveDataNode.traverse` for details.
-     */
     this.continuedList = props.continuedList || []
   }
 
@@ -94,10 +86,10 @@ class DataNode extends GiveTreeNode {
    */
 
   /**
-   * hasData - get whether this data node has data stored.
+   * Whether this data node has data stored. Because data node is populated with
+   *    actual data, it will always return `true` (always has data).
    *
-   * @returns {type}  Because data node is populated with actual data,
-   *    it will always return `true` (always has data).
+   * @type {boolean}
    */
   get hasData () {
     return true
@@ -108,33 +100,37 @@ class DataNode extends GiveTreeNode {
   }
 
   /**
-   * insert - Insert data under this node
+   * Insert data under this node
    *
-   * @param {Array<ChromRegionLiteral>} data - the sorted array of data
+   * @param {Array<ChromRegion>} data - the sorted array of data
    *    entries (each should be an extension of `GIVe.ChromRegion`).
    *    `data === null` or `data === []` means there is no data in
    *    `chrRange` and `false`s will be used in actual storage.
+   *
    *    __NOTICE:__ any data overlapping `chrRange` should appear either
    *    here or in `continuedList`, otherwise `continuedList` in data
    *    entries may not work properly.
+   *
    *    After insertion, any entry within `data` that has `.start` value
    *    larger than `this.start` will be deleted from the array or marked
    *    for deletion via `props.dataIndex`. See `props.dataIndex` for
    *    details.
-   * @param {ChromRegionLiteral} chrRanges - DataNode should not handle
+   * @param {ChromRegion} chrRanges - DataNode should not handle
    *    this.
-   * @param {object} props - additional properties being passed onto nodes.
-   * @param {Array<ChromRegionLiteral>} props.continuedList - the list of data
+   * @param {Object} [props] - additional properties being passed onto nodes.
+   * @param {Array<ChromRegion>} [props.continuedList] - the list of data
    *    entries that should not start in `chrRange` but are passed from the
    *    earlier regions, this will be useful for later regions if date for
    *    multiple regions are inserted at the same time
-   * @param {function|null} props.callback - the callback function to be
+   * @param {function} [props.callback] - the callback function to be
    *    used (with the data entry as its sole parameter) when inserting
-   * @param {number|null} props.dataIndex - current index of `data` to start
+   * @param {number} [props.dataIndex] - current index of `data` to start
    *    insertion. This is to optimize large insertions.
+   *
    *    If this is specified, after insertion it will be moved to the first
    *    data entry whose `.start` is greater than `this.start`, if no
    *    such entry exists, it will be moved to `data.length`.
+   *
    *    If this is not specified, after insertion, `data[0]` will become the
    *    first data entry whose `.start` is greater than `this.start`.
    *    Or `data` will become `[]` if no such entry exists.
@@ -182,7 +178,7 @@ class DataNode extends GiveTreeNode {
   remove (data, exactMatch, props) {
     props = props || {}
     if (data instanceof this.constructor && this.start === data.start && (
-      (!exactMatch) || this._compareData(data, this)
+      (!exactMatch) || this.constructor._compareData(data, this)
     )) {
       // this node should be removed
       this.clear()
@@ -190,7 +186,7 @@ class DataNode extends GiveTreeNode {
     }
     if (data.start === this.start) {
       this.startList = this.startList.filter(dataIn => {
-        if (!exactMatch || this._compareData(data, dataIn)) {
+        if (!exactMatch || this.constructor._compareData(data, dataIn)) {
           if (typeof props.callback === 'function') {
             props.callback(dataIn)
           }
@@ -201,7 +197,7 @@ class DataNode extends GiveTreeNode {
     }
     this.continuedList = this.continuedList.filter(dataIn => {
       if (dataIn.start === data.start && (
-        !exactMatch || this._compareData(data, dataIn)
+        !exactMatch || this.constructor._compareData(data, dataIn)
       )) {
         if (typeof props.callback === 'function') {
           props.callback(dataIn)
@@ -219,30 +215,30 @@ class DataNode extends GiveTreeNode {
   }
 
   /**
-   * traverse - traverse all nodes / data entries within `this` and calling
+   * Traverse all nodes / data entries within `this` and calling
    *    functions on them.
    *
-   * When traversing, everything in 'continuedList' of *the starting record only*
-   * will be processed first, then everything in 'startList' in all
+   * When traversing, everything in 'continuedList' of *the starting record
+   * only* will be processed first, then everything in 'startList' in all
    * overlapping records will be processed.
    *
-   * @param  {ChromRegionLiteral} chrRange - the chromosomal range
+   * @param  {ChromRegion} chrRange - the chromosomal range
    *    to traverse.
    * @param  {function} callback - the callback function, takes a
    *    `GIVE.ChromRegion` object as its sole parameter and returns
    *    something that can be evaluated as a boolean value to determine
    *    whether the call shall continue (if `breakOnFalse === true`).
-   * @param  {function|null} filter - a filter function that takes a
+   * @param  {function} [filter] - a filter function that takes a
    *    `GIVE.ChromRegion` object as its sole parameter and returns whether
    *    the region should be included in traverse.
-   * @param  {boolean} breakOnFalse - whether the traverse should be stopped
-   *    if `false` is returned from the callback function.
-   * @param  {object|null} props - additional properties being
+   * @param  {boolean} [breakOnFalse=false] - whether the traverse should be
+   *    stopped if `false` is returned from the callback function.
+   * @param  {Object} [props] - additional properties being
    *    passed onto nodes.
+   * @param  {boolean} [props.notFirstCall] - whether this is not the first
+   *    call of a series of `traverse` calls.
    * @param  {...any} args - additional args being passed onto `callback`
    *    and `filter`
-   * @param  {boolean} props.notFirstCall - whether this is not the first
-   *    call of a series of `traverse` calls.
    * @returns {boolean} - whether future traverses should be conducted.
    */
   traverse (chrRange, callback, filter, breakOnFalse, props, ...args) {
@@ -258,8 +254,8 @@ class DataNode extends GiveTreeNode {
       // If `chrRange` does not exist or overlaps `dataEntry`
       // call `callback` and return its value (applying `filter` and
       // `breakOnFalse`).
-      return this._callFuncOnDataEntry(callback, filter, breakOnFalse,
-        entry, props, ...args)
+      return this.constructor._callFuncOnDataEntry(callback, filter,
+        breakOnFalse, entry, props, ...args)
     }
     // needs to traverse on continuedList if `!props.notFirstCall`
     if (!props.notFirstCall) {
@@ -280,7 +276,8 @@ class DataNode extends GiveTreeNode {
   }
 
   /**
-   * mergeAfter - merge this node with `node`
+   * Merge this node with `node`.
+   *
    * If `node` doesn't have any data or anything in `startList`, merge.
    * Actually because of the structure of `GIVE.DataNode`, nothing needs
    *    to be changed in `this` if merge is successful. Just return `true`
@@ -299,11 +296,12 @@ class DataNode extends GiveTreeNode {
   }
 
   /**
-   * isEmpty - return whether this node is empty
+   * Whether this node is empty.
+   *
    * If there is no entry in both `this.startList` and `this.continuedList` then
    *    the node is considered empty.
    *
-   * @type {boolean}      whether the node is empty
+   * @type {boolean}
    */
   get isEmpty () {
     return this.startList.length <= 0 && this.continuedList.length <= 0

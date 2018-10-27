@@ -33,7 +33,7 @@
 const WitheringMixin = Base => class extends Base {
   /**
    * @constructor
-   * @param {object} [props] - properties that will be passed to the individual
+   * @param {Object} [props] - properties that will be passed to the individual
    *    implementations
    * @param {number} [props._currGen] - the current generation
    */
@@ -77,7 +77,7 @@ const WitheringMixin = Base => class extends Base {
   }
 
   /**
-   * wither - Let nodes and/or their children that are too old wither
+   * Let nodes and/or their children that are too old wither
    *    Note that this withering only removes nodes, it does not do any
    *    restructuring that may be required for some trees. The restructuring
    *    needs to happen in the __`GiveTree`__ object calling this.
