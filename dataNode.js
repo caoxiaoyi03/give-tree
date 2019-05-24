@@ -1,6 +1,10 @@
 /**
  * @license
- * Copyright 2018 Xiaoyi Cao
+ * Copyright 2018-2019 The Regents of the University of California.
+ * All Rights Reserved.
+ *
+ * Created by Xiaoyi Cao
+ * Department of Bioengineering
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,12 +18,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *
- * @module DataNode
  */
 
 const GiveTreeNode = require('./giveTreeNode')
 
 /**
+ * @typedef {import('@givengine/chrom-region')} ChromRegion
+ *
  * Class for data storage.
  *
  * Every record will serve as a bin, with a start and end coordinate, and
@@ -48,7 +53,7 @@ const GiveTreeNode = require('./giveTreeNode')
  *
  * `false`:  there is no data in this bin;
  *
- * A `GIVe.DataNode` instance:
+ * A `DataNode` instance:
  *           the instance of a class described in this file
  *
  * @class
@@ -62,18 +67,21 @@ const GiveTreeNode = require('./giveTreeNode')
  * @property {Array<ChromRegion>} continuedList - A list of data entries
  *    that __continue into__ the start coordinate of this node. This array
  *    will be sorted by the actual starting points, `[]` will have the same
- *    effect as `undefined`. This is used in `GiveDataNode.traverse`
- *    only at the first node. See `GiveDataNode.traverse` for details.
- * @param {Object} props - properties that will be passed to the
- *    individual implementations. For `GIVE.DataNode`, three properties
- *    will be used:
- * @param {number} props.start - for `this.start`
- * @param {Array<ChromRegion>} [props.startList] - for
- *    `this.startList`
- * @param {Array<ChromRegion>} [props.continuedList] - for
- *    `this.continuedList`
+ *    effect as `undefined`. This is used in `DataNode.traverse`
+ *    only at the first node. See `DataNode.traverse` for details.
  */
 class DataNode extends GiveTreeNode {
+  /**
+   * @constructor
+   * @param {object} props - properties that will be passed to the
+   *    individual implementations. For `GIVE.DataNode`, three properties
+   *    will be used:
+   * @param {number} props.start - for `this.start`
+   * @param {Array<ChromRegion>} [props.startList] - for
+   *    `this.startList`
+   * @param {Array<ChromRegion>} [props.continuedList] - for
+   *    `this.continuedList`
+   */
   constructor (props) {
     super(props)
     this._start = props.start
@@ -122,8 +130,9 @@ class DataNode extends GiveTreeNode {
    *    entries that should not start in `chrRange` but are passed from the
    *    earlier regions, this will be useful for later regions if date for
    *    multiple regions are inserted at the same time
-   * @param {function} [props.callback] - the callback function to be
-   *    used (with the data entry as its sole parameter) when inserting
+   * @param {function(ChromRegion):boolean} [props.callback] - the callback
+   *    function to be used (with the data entry as its sole parameter) when
+   *    inserting
    * @param {number} [props.dataIndex] - current index of `data` to start
    *    insertion. This is to optimize large insertions.
    *
@@ -283,16 +292,20 @@ class DataNode extends GiveTreeNode {
    *    to be changed in `this` if merge is successful. Just return `true`
    *    to let the caller handle `node`.
    *
-   * @param  {null|boolean|GiveDataNodeBase} node - node to be merged.
+   * @param  {DataNode|boolean|null} node - node to be merged.
    *    Note that this node has to be positioned after `this`.
    * @returns {boolean}      whether the merge is successful
    */
   mergeAfter (node) {
-    return (
-      node === false || (
-        node instanceof this.constructor && node.startList.length <= 0
-      )
-    )
+    if (node === false || (
+      node instanceof this.constructor && node.startList.length <= 0
+    )) {
+      return true
+    } else if (node instanceof this.constructor) {
+      // the node is not mergable, but its continuedList may be updated
+      node.updateContinuedList(this.continuedList.concat(this.startList))
+    }
+    return false
   }
 
   /**
@@ -305,6 +318,27 @@ class DataNode extends GiveTreeNode {
    */
   get isEmpty () {
     return this.startList.length <= 0 && this.continuedList.length <= 0
+  }
+
+  /**
+   * Update the continued list (this happens mainly because of node merging)
+   * @param {Array<ChromRegion>} continuedList
+   * @param {boolean} [throwIfNotConsistent] Throw an error if the final
+   *    `continuedList` is inconsistent with the original.
+   * @returns {Array<ChromRegion>} return a list concatenated with
+   *    `this.startList` as a base for future `continuedList`s
+   */
+  updateContinuedList (continuedList, throwIfNotConsistent) {
+    if (continuedList) {
+      continuedList = continuedList.filter(entry => (entry.end > this.start))
+      if (throwIfNotConsistent &&
+        this.continuedList.length > continuedList.length
+      ) {
+        throw new Error('ContinuedList inconsistent.')
+      }
+      this.continuedList = continuedList
+    }
+    return this.continuedList.concat(this.startList)
   }
 }
 

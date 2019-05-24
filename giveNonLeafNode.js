@@ -1,6 +1,11 @@
 /**
  * @license
- * Copyright 2017-2018 Xiaoyi Cao
+ * Copyright 2017-2019 The Regents of the University of California.
+ * All Rights Reserved.
+ *
+ * Created by Xiaoyi Cao
+ * Department of Bioengineering
+ *
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -78,9 +83,9 @@ class CannotBalanceError extends Error {
  * @property {number} reverseDepth - "Reversed depth" of the node. The one
  *    holding leaf nodes (should be `DataNode` or similar
  *    implementations) is at `0` and root is at maximum.
- * @property {GiveNonLeafNode|null|boolean} Next - The next node
+ * @property {GiveNonLeafNode|null|boolean} _next - The next node
  *    (sibling). Can be `null` or `false`.
- * @property {GiveNonLeafNode|null|boolean} Prev - The previous node
+ * @property {GiveNonLeafNode|null|boolean} _prev - The previous node
  *    (sibling).
  * @param {Object} props - properties that will be passed to the
  *    individual implementations. For `GiveNonLeafNode`, these
@@ -128,7 +133,7 @@ class GiveNonLeafNode extends GiveTreeNode {
           ', end: ' + props.end))
       }
       this.keys = [props.start, props.end]
-      this.values = [null]
+      this.values = [this.emptyChildValue]
     }
     this.reverseDepth = (
       Number.isInteger(props.reverseDepth) && props.reverseDepth > 0)
@@ -137,6 +142,17 @@ class GiveNonLeafNode extends GiveTreeNode {
       this.next = props.nextNode
       this.prev = props.prevNode
     }
+  }
+
+  /**
+   * The value for an empty child node
+   * @type {null|boolean}
+   *
+   * @readonly
+   * @memberof GiveNonLeafNode
+   */
+  get emptyChildValue () {
+    return this.tree.localOnly ? false : null
   }
 
   /**
@@ -208,6 +224,11 @@ class GiveNonLeafNode extends GiveTreeNode {
     this.keys[this.keys.length - 1] = newEnd
   }
 
+  /**
+   * The next node
+   *
+   * @type {GiveNonLeafNode|null}
+   */
   get next () {
     if (!this.tree.neighboringLinks) {
       throw new Error(
@@ -216,6 +237,11 @@ class GiveNonLeafNode extends GiveTreeNode {
     return this._next
   }
 
+  /**
+   * The previous node
+   *
+   * @type {GiveNonLeafNode|null}
+   */
   get prev () {
     if (!this.tree.neighboringLinks) {
       throw new Error(
@@ -388,6 +414,11 @@ class GiveNonLeafNode extends GiveTreeNode {
     return this.values[0]
   }
 
+  /**
+   * The first leaf element of `this`.
+   *
+   * @type {GiveTreeNode|boolean|null}  The first child element
+   */
   get firstLeaf () {
     return this.reverseDepth > 0 ? this.firstChild.firstLeaf : this.firstChild
   }
@@ -653,8 +684,14 @@ class GiveNonLeafNode extends GiveTreeNode {
       'implemented in `' + this.constructor.name + '`!')
   }
 
+  /**
+   * Clear the tree into a given empty value, or `this.emptyChildValue`
+   *
+   * @param {boolean|null} [convertTo] converted value
+   * @memberof GiveNonLeafNode
+   */
   clear (convertTo) {
-    convertTo = convertTo === false ? false : null
+    convertTo = convertTo === false ? false : this.emptyChildValue
     if (this.tree.neighboringLinks) {
       this._severeChildLinks(convertTo)
     }
@@ -717,7 +754,7 @@ class GiveNonLeafNode extends GiveTreeNode {
    */
   static _childMergable (childFront, childBack) {
     return (childFront === childBack &&
-      (childFront === null || childFront === false)
+      (childFront === this.emptyChildValue || childFront === false)
     ) || (childFront && (typeof childFront.mergeAfter === 'function') &&
       childFront.mergeAfter(childBack)
     )

@@ -1,6 +1,10 @@
 /**
  * @license
- * Copyright 2017 GIVe Authors
+ * Copyright 2017-2019 The Regents of the University of California.
+ * All Rights Reserved.
+ *
+ * Created by Xiaoyi Cao
+ * Department of Bioengineering
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +20,8 @@
  */
 
 /**
+ * @typedef {import('./giveTreeNode')} GiveTreeNode
+ *
  * Withering nodes.
  *
  * These nodes have a property called `_lastUpdateGen` to show their last
@@ -28,6 +34,7 @@
  *    child that returns `true` for its `.wither()` call, call
  *    `.remove(child, true)` to remove them.
  *
+ * @param {GiveTreeNode} Base
  * @mixin WitheringMixin
  */
 const WitheringMixin = Base => class extends Base {

@@ -1,6 +1,11 @@
 /**
  * @license
- * Copyright 2017-2018 Xiaoyi Cao
+ * Copyright 2017-2019 The Regents of the University of California.
+ * All Rights Reserved.
+ *
+ * Created by Xiaoyi Cao
+ * Department of Bioengineering
+ *
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +20,7 @@
  * limitations under the License.
  *
  * @module GiveTreeNode
+ * @typedef {import('@givengine/chrom-region')} ChromRegion
  */
 
 /**
@@ -95,10 +101,11 @@ class GiveTreeNode {
    *    the list of data entries that should not start in `chrRange` but are
    *    passed from the earlier regions, this will be useful for later regions
    *    if date for multiple regions are inserted at the same time.
-   * @param {function} [props.callback] - the callback function to be used
-   *    (with the data entry as its sole parameter) when inserting
-   * @param {function} [props.LeafNodeCtor] - the constructor function of
-   *    leaf nodes if they are not the same as the non-leaf nodes.
+   * @param {function(ChromRegion):boolean} [props.callback] - the callback
+   *    function to be used (with the data entry as its sole parameter) when
+   *    inserting
+   * @param {function(new:GiveTreeNode)} [props.LeafNodeCtor] - the constructor
+   *    function of leaf nodes if they are not the same as the non-leaf nodes.
    * @param {number} [props.dataIndex] - the current index of `data`.
    *    If this is specified, no array splicing will be done on `data` to
    *    improve performance. `props.currIndex` will be shifted (and passed
@@ -140,8 +147,9 @@ class GiveTreeNode {
    *    the removed nodes, should be either `null` (default) or `false`.
    * @param  {Object} [props] - additional properties being
    *    passed onto nodes.
-   * @param {function|null} props.callback - the callback function to be
-   *    used (with the data entry as its sole parameter) when deleting
+   * @param {function(ChromRegion):boolean} [props.callback] - the callback
+   *    function to be used (with the data entry as its sole parameter) when
+   *    deleting
    * @returns {GiveTreeNode|boolean}
    *    If the node itself shall be removed, return a falsey value to allow
    *    parents to take additional steps.
@@ -187,10 +195,10 @@ class GiveTreeNode {
    * @param {Array<ChromRegion>} data - the data array to be
    *    traversed
    * @param {number} currIndex - starting index
-   * @param {function} critFunc - function to decide whether data meets some
-   *    criteria.
-   * @param {function} [callback] - function to be called upon all data entries
-   *    that meet the criteria
+   * @param {function(ChromRegion):boolean} critFunc - function to decide
+   *    whether data meets some criteria.
+   * @param {function(ChromRegion):boolean} [callback] - function to be called
+   *    upon all data entries that meet the criteria
    * @returns {number} the index of the first entry that does not meet the
    *    criteria
    */
@@ -215,12 +223,12 @@ class GiveTreeNode {
    * @static
    * @param  {ChromRegion|null} [chrRange] - the chromosomal
    *    range, if provided, data should overlap with chrRange to be called.
-   * @param  {function} callback - the callback function, takes a
-   *    `ChromRegion` object as its sole parameter and returns
+   * @param  {function(ChromRegion):boolean} callback - the callback function,
+   *    takes a `ChromRegion` object as its sole parameter and returns
    *    something that can be evaluated as a boolean value to determine
    *    whether the call shall continue (if `breakOnFalse === true`).
-   * @param  {function} [filter] - a filter function that takes a
-   *    `ChromRegion` object as its sole parameter and returns whether
+   * @param  {function(ChromRegion):boolean} [filter] - a filter function that
+   *    takes a `ChromRegion` object as its sole parameter and returns whether
    *    the region should be included in traverse.
    * @param  {boolean} [returnFalse=false] - whether this function should return
    *    `false` if `callback` returns `false`.
@@ -249,12 +257,12 @@ class GiveTreeNode {
    *
    * @param  {ChromRegion} chrRange - the chromosomal range
    *    to traverse.
-   * @param  {function} callback - the callback function, takes a
-   *    `ChromRegion` object as its sole parameter and returns
+   * @param  {function(ChromRegion):boolean} callback - the callback function,
+   *    takes a `ChromRegion` object as its sole parameter and returns
    *    something that can be evaluated as a boolean value to determine
    *    whether the call shall continue (if `breakOnFalse === true`).
-   * @param  {function} [filter] - a filter function that takes a
-   *    `ChromRegion` object as its sole parameter and returns
+   * @param  {function(ChromRegion):boolean} [filter] - a filter function that
+   *    takes a `ChromRegion` object as its sole parameter and returns
    *    whether the region should be included in traverse.
    * @param  {boolean} [breakOnFalse=false] - whether the traverse should be
    *    stopped if `false` is returned from the callback function.

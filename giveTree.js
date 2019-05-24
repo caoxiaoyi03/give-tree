@@ -1,6 +1,10 @@
 /**
  * @license
- * Copyright 2017-2018 Xiaoyi Cao
+ * Copyright 2017-2019 The Regents of the University of California.
+ * All Rights Reserved.
+ *
+ * Created by Xiaoyi Cao
+ * Department of Bioengineering
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,6 +42,9 @@ const ChromRegion = require('@givengine/chrom-region')
  *    To disable withering, set `props.lifeSpan` to 0 or a negative value.
  * @param {function} [props.LeafNodeCtor] - if omitted, the constructor of
  *    `this.root` will be used
+ * @param {function} [props.localOnly] - Whether this tree allows live
+     *    updating of its content (CUD operations), if this is `true`,
+     *    withering will be disabled and `props.lifeSpan` will be ignored.
  */
 class GiveTree {
   constructor (chrRange, NonLeafNodeCtor, props) {
@@ -47,8 +54,9 @@ class GiveTree {
     props.end = chrRange.end
     props.tree = this
     props.isRoot = true
-    if ((typeof props.lifeSpan === 'number' && props.lifeSpan > 0) ||
-      !props.lifeSpan
+    if (!this.localOnly &&
+      ((typeof props.lifeSpan === 'number' && props.lifeSpan > 0) ||
+        !props.lifeSpan)
     ) {
       props.lifeSpan = props.lifeSpan || this.constructor.DEFAULT_LIFE_SPAN
       this._currGen = 0
@@ -71,6 +79,9 @@ class GiveTree {
    *    individual implementations
    * @param {function} [props.LeafNodeCtor] - if omitted, the constructor of
    *    `this.root` will be used
+   * @param {function} [props.localOnly] - Whether this tree allows live
+   *    updating of its content (CUD operations), if this is `true`,
+   *    withering will be disabled and `props.lifeSpan` will be ignored.
    */
   _initProperties (chrRange, NonLeafNodeCtor, props) {
     /**
@@ -81,6 +92,7 @@ class GiveTree {
      * @property {function} _LeafNodeCtor - Constructor for all leaf nodes
      */
     this._LeafNodeCtor = props.LeafNodeCtor || NonLeafNodeCtor
+    this.localOnly = !!props.localOnly
   }
 
   /**
@@ -171,41 +183,45 @@ class GiveTree {
    */
   insert (data, chrRanges, props) {
     let exceptions = []
-    if (!Array.isArray(chrRanges)) {
-      chrRanges = [chrRanges]
-    }
-    let uncachedRanges = chrRanges.reduce(
-      (uncachedRanges, range) =>
-        uncachedRanges.concat(this.getUncachedRange(range)),
-      []
-    )
-    uncachedRanges.forEach((range, index) => {
-      try {
-        this._insertSingleRange(data, range,
-          Array.isArray(props) ? props[index] : props)
-      } catch (err) {
-        err.message = '[insert] ' + err.message +
+    if (this.localOnly) {
+      this._insertSingleRange(data, this.coveringRange,
+        Array.isArray(props) ? props[0] : props)
+    } else {
+      if (!Array.isArray(chrRanges)) {
+        chrRanges = [chrRanges]
+      }
+      let uncachedRanges = chrRanges.reduce(
+        (uncachedRanges, range) =>
+          uncachedRanges.concat(this.getUncachedRange(range)),
+        []
+      )
+      uncachedRanges.forEach((range, index) => {
+        try {
+          this._insertSingleRange(data, range,
+            Array.isArray(props) ? props[index] : props)
+        } catch (err) {
+          err.message = '[insert] ' + err.message +
           '\nRange: ' + range.regionToString() +
           '\nData (first 3): ' + JSON.stringify(data.slice(0, 3)) +
           '\nStack: ' + err.stack
-        exceptions.push(err)
-        return null
+          exceptions.push(err)
+          return null
+        }
+      })
+      if (exceptions.length > 0) {
+        let message = exceptions.reduce(
+          (prevMessage, currErr) => (prevMessage + '\n' + currErr.message),
+          'Exception occured during insertion:'
+        )
+        throw new Error(message)
       }
-    })
-    if (exceptions.length > 0) {
-      let message = exceptions.reduce(
-        (prevMessage, currErr) => (prevMessage + '\n' + currErr.message),
-        'Exception occured during insertion:'
-      )
-      throw new Error(message)
     }
   }
 
   /**
    * Removing a single data entry.
    *
-   * @param  {ChromRegion} data - the data that needs to be
-   *    removed.
+   * @param  {ChromRegion} data - the data that needs to be removed.
    * @param  {boolean} [exactMatch=false] - whether an exact match is needed
    *    to remove the entry. If `true`, then `.equalTo(data)` method (if
    *    exists within the data entry) or `===` (if no `equalTo` method
@@ -339,7 +355,9 @@ class GiveTree {
    */
   getUncachedRange (chrRange, props) {
     props = props || {}
-    if (!chrRange || !chrRange.chr || chrRange.chr === this.chr) {
+    if (!this.localOnly &&
+      (!chrRange || !chrRange.chr || chrRange.chr === this.chr)
+    ) {
       chrRange = chrRange
         ? this._root.truncateChrRange(chrRange, true, false)
         : this.coveringRange
@@ -362,7 +380,9 @@ class GiveTree {
    */
   hasUncachedRange (chrRange, props) {
     props = props || {}
-    if (!chrRange || !chrRange.chr || chrRange.chr === this.chr) {
+    if (!this.localOnly &&
+      (!chrRange || !chrRange.chr || chrRange.chr === this.chr)
+    ) {
       chrRange = chrRange
         ? this._root.truncateChrRange(chrRange, true, false)
         : this.coveringRange
