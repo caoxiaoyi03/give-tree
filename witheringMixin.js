@@ -63,18 +63,22 @@ const WitheringMixin = Base => class extends Base {
   mergeAfter (node) {
     let nodeGen = node
       ? (node._lastUpdateGen || this._lastUpdateGen) : this._lastUpdateGen
-    if (typeof super.mergeAfter === 'function') {
-      let result = super.mergeAfter(...arguments)
-      if (result) {
-        if (this._genOlderThan(nodeGen)) {
-          this._lastUpdateGen = nodeGen
-        }
+    let result = super.mergeAfter(...arguments)
+    if (result) {
+      if (this._genOlderThan(nodeGen)) {
+        this._lastUpdateGen = nodeGen
       }
-      return result
     }
-    return false
+    return result
   }
 
+  /**
+   * Whether the generation of `this` is older than the generation to compare.
+   * This method is needed because generation numbers can be cycled.
+   *
+   * @param {*} generationToComp the generation to be compared
+   * @returns {boolean} `true` if `this` is older
+   */
   _genOlderThan (generationToComp) {
     return this.tree && this.tree.lifeSpan &&
       generationToComp > this._lastUpdateGen &&
@@ -124,6 +128,11 @@ const WitheringMixin = Base => class extends Base {
     return this.childNum <= 1 && this.values[0] === null
   }
 
+  /**
+   * Whether `this` should wither according to settings in `this.tree`
+   *
+   * @readonly
+   */
   get _shouldWither () {
     if (!this.tree || !this.tree.lifeSpan) {
       return false
@@ -137,6 +146,9 @@ const WitheringMixin = Base => class extends Base {
     )
   }
 
+  /**
+   * Refresh the generation of `this` so it will last longer.
+   */
   rejuvenate () {
     if (this.tree && this.tree.lifeSpan) {
       this._lastUpdateGen = this.tree._currGen

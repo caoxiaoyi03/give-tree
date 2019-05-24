@@ -74,6 +74,8 @@ class GiveTreeNode {
   /**
    * Insert data under this node
    *
+   * @abstract
+   *
    * @param {Array<ChromRegion>} data - the sorted array of
    *    data entries (each should be an extension of `GIVe.ChromRegion`).
    *    `data === null` or `data === []` means there is no data in
@@ -316,6 +318,18 @@ class GiveTreeNode {
   get isEmpty () {
     throw new Error('GiveTreeNode.isEmpty not implemented in `' +
       this.constructor.name + '`!')
+  }
+
+  /**
+   * Merge `this` with the node after `this` (if possible). This method shall
+   * be implemented if nodes are mergable.
+   *
+   * @param {GiveTreeNode|boolean|null} node
+   * @returns {boolean}
+   * @memberof GiveTreeNode
+   */
+  mergeAfter (node) {
+    return false
   }
 }
 

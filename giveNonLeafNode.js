@@ -755,8 +755,7 @@ class GiveNonLeafNode extends GiveTreeNode {
   static _childMergable (childFront, childBack) {
     return (childFront === childBack &&
       (childFront === this.emptyChildValue || childFront === false)
-    ) || (childFront && (typeof childFront.mergeAfter === 'function') &&
-      childFront.mergeAfter(childBack)
+    ) || (childFront && childFront.mergeAfter(childBack)
     )
   }
 

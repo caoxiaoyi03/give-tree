@@ -1,6 +1,6 @@
 {
   "name": "@givengine/give-tree",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Node implementation of interval-tree based cache data structures: base class",
   "main": "index.js",
   "scripts": {
