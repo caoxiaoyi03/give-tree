@@ -26,7 +26,7 @@
 /**
  * Node interface for GIVE Trees
  *
- * @interface
+ * @class
  * @alias module:GiveTreeNode
  */
 class GiveTreeNode {
@@ -143,13 +143,13 @@ class GiveTreeNode {
    *    `===` if not. (this is done via calling
    *    `this.constructor._compareData(dataIn, dataEx)`)
    *
-   *    If `false`, all entries matching the start and end values will be
+   *    If `false`, all entries matching the `start` and `end` values will be
    *    removed.
    * @param {boolean|null} [convertTo=null] - what shall be used to replace
    *    the removed nodes, should be either `null` (default) or `false`.
    * @param  {Object} [props] - additional properties being
    *    passed onto nodes.
-   * @param {function(ChromRegion):boolean} [props.callback] - the callback
+   * @param {function(ChromRegion):void} [props.callback] - the callback
    *    function to be used (with the data entry as its sole parameter) when
    *    deleting
    * @returns {GiveTreeNode|boolean}

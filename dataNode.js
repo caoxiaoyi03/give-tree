@@ -18,13 +18,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *
+ * @typedef {import('./giveTreeNode')} GiveTreeNode
  */
-
 const GiveTreeNode = require('./giveTreeNode')
 
 /**
  * @typedef {import('@givengine/chrom-region')} ChromRegion
- *
+ */
+
+/**
+ * @module DataNode
  * Class for data storage.
  *
  * Every record will serve as a bin, with a start and end coordinate, and
@@ -56,9 +59,8 @@ const GiveTreeNode = require('./giveTreeNode')
  * A `DataNode` instance:
  *           the instance of a class described in this file
  *
- * @class
  * @alias module:DataNode
- * @implements {GiveTreeNode}
+ * @extends {GiveTreeNode}
  * @property {Array<ChromRegion>} startList - A list of data entries
  *    that __start exactly at__ the start coordinate of this node.
  *    `startList` will become an empty array only if the previous bin is
@@ -113,7 +115,7 @@ class DataNode extends GiveTreeNode {
    * @param {Array<ChromRegion>} data - the sorted array of data
    *    entries (each should be an extension of `GIVe.ChromRegion`).
    *    `data === null` or `data === []` means there is no data in
-   *    `chrRange` and `false`s will be used in actual storage.
+   *    `chrRange` and `[]`s will be used in actual storage.
    *
    *    __NOTICE:__ any data overlapping `chrRange` should appear either
    *    here or in `continuedList`, otherwise `continuedList` in data
@@ -123,14 +125,14 @@ class DataNode extends GiveTreeNode {
    *    larger than `this.start` will be deleted from the array or marked
    *    for deletion via `props.dataIndex`. See `props.dataIndex` for
    *    details.
-   * @param {ChromRegion} chrRanges - DataNode should not handle
+   * @param {ChromRegion} chrRange - DataNode should not handle
    *    this.
    * @param {Object} [props] - additional properties being passed onto nodes.
    * @param {Array<ChromRegion>} [props.continuedList] - the list of data
    *    entries that should not start in `chrRange` but are passed from the
    *    earlier regions, this will be useful for later regions if date for
    *    multiple regions are inserted at the same time
-   * @param {function(ChromRegion):boolean} [props.callback] - the callback
+   * @param {function(ChromRegion):void} [props.callback] - the callback
    *    function to be used (with the data entry as its sole parameter) when
    *    inserting
    * @param {number} [props.dataIndex] - current index of `data` to start
@@ -184,7 +186,34 @@ class DataNode extends GiveTreeNode {
     return this
   }
 
-  remove (data, exactMatch, props) {
+  /**
+   * Remove data entries from the node.
+   *
+   * Data entries with the same start will be removed. If multiple entries are
+   * found with the same start, the behavior will be defined by `exactMatch`.
+   *
+   * @param  {(ChromRegion|GiveTreeNode)} data the data
+   *    entry being removed.
+   * @param  {boolean} exactMatch whether an exact match is needed
+   *    to remove multiple data entries with the same start and end values.
+   *
+   *    If `true`, `data` will be compared by `.equalTo(data)` if exists,
+   *    `===` if not. (this is done via calling
+   *    `this.constructor._compareData(dataIn, dataEx)`)
+   *
+   *    If `false`, all entries matching the `start` value will be removed.
+   * @param {boolean|null} [convertTo=null] what shall be used to replace
+   *    the removed nodes, should be either `null` (default) or `false`.
+   * @param  {Object} [props] additional properties being
+   *    passed onto nodes.
+   * @param {function(ChromRegion):void} [props.callback] the callback
+   *    function to be used (with the data entry as its sole parameter) when
+   *    deleting
+   * @returns {GiveTreeNode|boolean}
+   *    If the node itself shall be removed, return a falsey value to allow
+   *    parents to take additional steps.
+   */
+  remove (data, exactMatch, convertTo, props) {
     props = props || {}
     if (data instanceof this.constructor && this.start === data.start && (
       (!exactMatch) || this.constructor._compareData(data, this)
@@ -281,7 +310,7 @@ class DataNode extends GiveTreeNode {
   }
 
   getUncachedRange (chrRange, props) {
-    return props._result || []
+    return (props || {})._result || []
   }
 
   /**
