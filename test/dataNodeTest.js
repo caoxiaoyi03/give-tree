@@ -1,4 +1,4 @@
-const DataNode = require('../dataNode')
+const DataNode = require('../index').DataNode
 const chai = require('chai')
 const dirtyChai = require('dirty-chai')
 chai.use(dirtyChai)
@@ -46,6 +46,7 @@ describe('Data Node tests', function () {
     expect(this.testNode.isEmpty).to.be.true()
     this.testNode.insert([])
     expect(this.testNode.isEmpty).to.be.true()
+    expect(new DataNode(this.testNode)).to.be.eql(this.testNode)
   })
 
   it('Insert data into testNode', function () {
@@ -238,55 +239,176 @@ describe('Data Node tests', function () {
     }
     this.testNode.insert(this.dataArray, null, props)
     let traverseContainer = []
-    let alwaysTraverseCallback = chrRegion =>
-      traverseContainer.push(chrRegion.toString())
-    let breakTraverseCallback = chrRegion =>
+    let alwaysTraverseCallback = (chrRegion, props, ...args) =>
+      traverseContainer.push({
+        'regionString': chrRegion.toString(),
+        args
+      })
+    let breakTraverseCallback = (chrRegion, props, ...args) =>
       (chrRegion.flag1 !== 'dataFlag1-4' &&
-      traverseContainer.push(chrRegion.toString()))
-
-    let travProps = {
-      callback: chrRegion => (
-        traverseContainer.push(chrRegion.toString())
+        traverseContainer.push({
+          'regionString': chrRegion.toString(),
+          args
+        })
       )
-    }
-    expect(this.testNode.remove(dataToRemove, true, null, rmProps))
-      .to.equal(this.testNode)
-    expect(this.testNode.startList).to.eql([
-      new ChromRegion('chr1:123-456(-)', null, {
-        flag1: 'dataFlag1-4'
-      })
-    ])
-    expect(this.testNode.continuedList).to.eql([
-      new ChromRegion('chr1:1-1200', null, {
-        flag0: 'dataFlag0-1'
-      }),
-      new ChromRegion('chr1:12-1200(-)', null, {
-        flag1: 'dataFlag1-2'
-      })
-    ])
-    expect(removeCallbackContainer).to.eql([
-      'chr1:123-789'
-    ])
-    expect(this.testNode.isEmpty).to.be.false()
-    this.testNode.remove(props.continuedList[0], true, null, rmProps)
-    expect(this.testNode.continuedList).to.eql([this.dataArray[1]])
-    this.testNode.remove(this.dataArray[1], true, null, rmProps)
-    expect(this.testNode.continuedList).to.eql([])
-    expect(this.testNode.remove(this.dataArray[3], true, null, rmProps))
-      .to.equal(false)
-    expect(removeCallbackContainer).to.eql([
-      'chr1:123-789', 'chr1:1-1200', 'chr1:12-1200 (-)', 'chr1:123-456 (-)'
-    ])
-    expect(this.testNode.isEmpty).to.be.true()
-    this.testNode.insert(this.dataArray, null, props)
-    expect(this.testNode.remove(dataToRemove, false, null, rmProps))
-    expect(this.testNode.startList).to.eql([])
-    this.testNode.clear()
-    this.testNode.insert(this.dataArray, null, props)
-    expect(this.testNode.remove(this.testNode, true)).to.be.false()
-    expect(this.testNode.isEmpty).to.be.true()
-    this.testNode.insert(this.dataArray, null, props)
-    expect(this.testNode.remove(this.testNode, false)).to.be.false()
-    expect(this.testNode.isEmpty).to.be.true()
+    let earlyBreakTraverseCallback = (chrRegion, props, ...args) =>
+      (chrRegion.flag1 !== 'dataFlag1-2' &&
+        traverseContainer.push({
+          'regionString': chrRegion.toString(),
+          args
+        })
+      )
+    let strandFilter = chrRegion => chrRegion.strand !== false
+    let strandAlwaysPassFilter = chrRegion => true
+
+    expect(this.testNode.traverse(
+      new ChromRegion('chr1: 1-2'), alwaysTraverseCallback, null, false, {}
+    )).to.be.true()
+    expect(traverseContainer).to.eql([{
+      regionString: 'chr1:1-1200',
+      args: []
+    }])
+
+    traverseContainer.length = 0
+    expect(this.testNode.traverse(
+      new ChromRegion('chr1: 1-2'), alwaysTraverseCallback, null, false, {
+        notFirstCall: true
+      }
+    )).to.be.true()
+    expect(traverseContainer).to.eql([])
+
+    expect(this.testNode.traverse(
+      new ChromRegion('chr1: 50-200'), alwaysTraverseCallback, null, true, {}
+    )).to.be.true()
+    expect(traverseContainer).to.eql([{
+      regionString: 'chr1:1-1200',
+      args: []
+    }, {
+      regionString: 'chr1:12-1200 (-)',
+      args: []
+    }, {
+      regionString: 'chr1:123-456 (-)',
+      args: []
+    }, {
+      regionString: 'chr1:123-789',
+      args: []
+    }])
+    traverseContainer.length = 0
+
+    expect(this.testNode.traverse(
+      new ChromRegion('chr1: 50-200'), breakTraverseCallback, null, false, {}
+    )).to.be.true()
+    expect(traverseContainer).to.eql([{
+      regionString: 'chr1:1-1200',
+      args: []
+    }, {
+      regionString: 'chr1:12-1200 (-)',
+      args: []
+    }, {
+      regionString: 'chr1:123-789',
+      args: []
+    }])
+    traverseContainer.length = 0
+
+    expect(this.testNode.traverse(
+      new ChromRegion('chr1: 50-200'), breakTraverseCallback, null, true, {}
+    )).to.be.false()
+    expect(traverseContainer).to.eql([{
+      regionString: 'chr1:1-1200',
+      args: []
+    }, {
+      regionString: 'chr1:12-1200 (-)',
+      args: []
+    }])
+    traverseContainer.length = 0
+
+    expect(this.testNode.traverse(
+      new ChromRegion('chr1: 50-200'), breakTraverseCallback,
+      strandFilter, true, {}
+    )).to.be.true()
+    expect(traverseContainer).to.eql([{
+      regionString: 'chr1:1-1200',
+      args: []
+    }, {
+      regionString: 'chr1:123-789',
+      args: []
+    }])
+    traverseContainer.length = 0
+
+    expect(this.testNode.traverse(
+      new ChromRegion('chr1: 50-200'), breakTraverseCallback,
+      strandFilter, true, { notFirstCall: true }
+    )).to.be.true()
+    expect(traverseContainer).to.eql([{
+      regionString: 'chr1:123-789',
+      args: []
+    }])
+    traverseContainer.length = 0
+
+    expect(this.testNode.traverse(
+      new ChromRegion('chr1: 50-200'), breakTraverseCallback,
+      strandAlwaysPassFilter, true, {}, 'test1', 'test2', 3
+    )).to.be.false()
+    expect(traverseContainer).to.eql([{
+      regionString: 'chr1:1-1200',
+      args: ['test1', 'test2', 3]
+    }, {
+      regionString: 'chr1:12-1200 (-)',
+      args: ['test1', 'test2', 3]
+    }])
+    traverseContainer.length = 0
+
+    expect(this.testNode.traverse(
+      new ChromRegion('chr1: 50-200'), earlyBreakTraverseCallback,
+      strandFilter, true, { notFirstCall: true }
+    )).to.be.true()
+    expect(traverseContainer).to.eql([{
+      regionString: 'chr1:123-789',
+      args: []
+    }])
+    traverseContainer.length = 0
+
+    expect(this.testNode.traverse(
+      new ChromRegion('chr1: 50-200'), earlyBreakTraverseCallback,
+      strandAlwaysPassFilter, true, {}, 'test1', 'test2', 3
+    )).to.be.false()
+    expect(traverseContainer).to.eql([{
+      regionString: 'chr1:1-1200',
+      args: ['test1', 'test2', 3]
+    }])
+    traverseContainer.length = 0
+  })
+
+  it('Merge after and updateContinuedList', function () {
+    let prevNode = [
+      new DataNode({ start: 50 }),
+      new DataNode({ start: 99 })
+    ]
+    let laterDataArray = this.dataArray.map(chrRegion => chrRegion.clone())
+    laterDataArray[1].flag1 = 'dataFlag1-2-later'
+    let propsPrev = { dataIndex: 0 }
+    let propsLater = { dataIndex: 0 }
+    this.testNode.insert(laterDataArray, null, propsLater)
+    prevNode[0].insert(this.dataArray, null, propsPrev)
+    prevNode[1].insert(this.dataArray, null, propsPrev)
+    expect(this.testNode.continuedList).to.have.lengthOf(1)
+      .and.to.include.members(laterDataArray.slice(1, 2))
+      .and.to.not.include.members(this.dataArray.slice(1, 2))
+    expect(prevNode[0].continuedList).to.have.lengthOf(1)
+      .and.to.include.members(this.dataArray.slice(1, 2))
+    expect(prevNode[1].continuedList).to.have.lengthOf(2)
+      .and.to.include.members(this.dataArray.slice(1, 3))
+    expect(prevNode[0].mergeAfter(null)).to.be.false()
+    expect(prevNode[0].mergeAfter(false)).to.be.true()
+    expect(prevNode[0].mergeAfter(prevNode[1])).to.be.true()
+
+    expect(() => this.testNode.updateContinuedList([], true)).to.throw()
+    expect(this.testNode.updateContinuedList())
+      .to.be.eql(propsLater.continuedList)
+
+    expect(prevNode[0].mergeAfter(this.testNode)).to.be.false()
+    expect(this.testNode.continuedList).to.have.lengthOf(1)
+      .and.to.include.members(this.dataArray.slice(1, 2))
+      .and.to.not.include.members(laterDataArray.slice(1, 2))
   })
 })

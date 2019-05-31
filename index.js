@@ -26,13 +26,13 @@
 
 module.exports = {
   // Nodes
-  GiveTreeNode: require('./giveTreeNode'),
-  GiveNonLeafNode: require('./giveNonLeafNode'),
-  DataNode: require('./dataNode'),
+  GiveTreeNode: require('./lib/giveTreeNode'),
+  GiveNonLeafNode: require('./lib/giveNonLeafNode'),
+  DataNode: require('./lib/dataNode'),
 
   // Tree
-  GiveTree: require('./giveTree'),
+  GiveTree: require('./lib/giveTree'),
 
   // Mixin
-  WitheringMixin: require('./witheringMixin')
+  WitheringMixin: require('./lib/witheringMixin')
 }
