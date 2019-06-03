@@ -48,12 +48,16 @@ describe('Give tree tests', function () {
     this.treeRange = new ChromRegion('chr1:1-2000')
   })
 
-  it('New unimplemented tree', function () {
+  it('New sample tree', function () {
+    let tree = new SampleTree(this.treeRange)
+    expect(tree).to.be.instanceOf(GiveTree)
+  })
+
+  it('New sample tree with given branching factor', function () {
     let props = {
-      LeafNodeCtor: DataNode
+      branchingFactor: 3
     }
-    let newTree = new GiveTree(this.treeRange, GiveTreeNode, props)
-    expect(newTree).to.be.instanceOf(GiveTree)
-    expect(() => newTree.insert(this.dataArray, this.treeRange)).to.throw()
+    let tree = new SampleTree(this.treeRange, props)
+    expect(tree).to.be.instanceOf(GiveTree)
   })
 })

@@ -64,19 +64,43 @@ describe('Test if the code complains for missing required implementation',
       expect(() => newNode.isEmpty).to.throw()
     })
 
-    it('GiveNonLeafNode', function () {
-      let newNode = new GiveNonLeafNode()
-      expect(() => (newNode.start = 0)).to.throw()
-      expect(() => newNode.start).to.throw()
-      expect(() => (newNode.end = 10)).to.throw()
-      expect(() => newNode.end).to.throw()
-      expect(() => newNode.insert(this.dataArray, this.treeRange)).to.throw()
-      expect(() => newNode.remove(this.dataArray[0])).to.throw()
-      expect(() => newNode.clear()).to.throw()
-      expect(() => newNode.traverse(this.treeRange, () => true)).to.throw()
-      expect(() => newNode.getUncachedRange(this.treeRange)).to.throw()
-      expect(() => newNode.hasUncachedRange(this.treeRange)).to.throw()
-      expect(() => newNode.isEmpty).to.throw()
+    it('GiveTree and GiveNonLeafNode without neighbor links', function () {
+      let newTree = new GiveTree(this.treeRange, GiveNonLeafNode)
+      expect(newTree.coveringRange.equalTo(this.treeRange)).to.be.true()
+      expect(newTree._currGen).to.equal(0)
+      expect(newTree._root.childNum).to.equal(1)
+      expect(newTree._root.start).to.equal(0)
+      expect(newTree._root.end).to.equal(2000)
+      expect(newTree._root.length).to.equal(2000)
+      let newNode = new GiveNonLeafNode(newTree._root)
+      expect(newNode.start).to.equal(0)
+      expect(newNode.end).to.equal(2000)
+      newNode.start = 1
+      newNode.end = 10000
+      expect(newNode.start).to.equal(1)
+      expect(newNode.end).to.equal(10000)
+      expect(newTree._root.start).to.equal(1)
+      expect(newTree._root.end).to.equal(10000)
+
+      expect(() => newTree.insert(this.dataArray, this.treeRange)).to.throw()
+      expect(
+        () => newTree._root._addLeafRecords(this.dataArray, this.treeRange)
+      ).to.throw()
+      expect(
+        () => newTree._root._addNonLeafRecords(this.dataArray, this.treeRange)
+      ).to.throw()
+
+      expect(() => new GiveNonLeafNode()).to.throw()
+      expect(() => new GiveNonLeafNode({ start: 100, end: 0 })).to.throw()
+      expect(() => newTree._root.next).to.throw()
+      expect(() => newTree._root.prev).to.throw()
+      expect(() => (newTree._root.next = newNode)).to.throw()
+      expect(() => (newTree._root.prev = newNode)).to.throw()
+
+      let newNoWitherTree = new GiveTree(this.treeRange, GiveNonLeafNode, {
+        lifeSpan: 0
+      })
+      expect(newNoWitherTree._currGen).to.be.null()
     })
   }
 )
