@@ -46,11 +46,20 @@ describe('Give tree tests', function () {
       })
     ]
     this.treeRange = new ChromRegion('chr1:1-2000')
+    this.nonOverlappingRange = new ChromRegion('chr1:2002-4000')
   })
 
   it('New sample tree', function () {
     let tree = new SampleTree(this.treeRange)
     expect(tree).to.be.instanceOf(GiveTree)
+    expect(() =>
+      tree._root.truncateChrRange(this.nonOverlappingRange, true, true, false)
+    ).to.throw()
+    tree.insert(this.dataArray, this.treeRange)
+    expect(tree._root.childNum).to.equal(2)
+    expect(tree._root.reverseDepth).to.equal(1)
+    expect(tree._root.values[0].start).to.equal(0)
+    expect(tree._root.values[0].end).to.equal(50)
   })
 
   it('New sample tree with given branching factor', function () {
