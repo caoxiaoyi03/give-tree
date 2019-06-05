@@ -47,26 +47,33 @@ describe('Give tree tests', function () {
     ]
     this.treeRange = new ChromRegion('chr1:1-2000')
     this.nonOverlappingRange = new ChromRegion('chr1:2002-4000')
+    this.diffChrRange = new ChromRegion('chr2:1-1000')
   })
 
   it('New sample tree', function () {
     let tree = new SampleTree(this.treeRange)
+    let dataArray = this.dataArray.slice()
     expect(tree).to.be.instanceOf(GiveTree)
     expect(() =>
       tree._root.truncateChrRange(this.nonOverlappingRange, true, true, false)
     ).to.throw()
-    tree.insert(this.dataArray, this.treeRange)
-    expect(tree._root.childNum).to.equal(2)
-    expect(tree._root.reverseDepth).to.equal(1)
-    expect(tree._root.values[0].start).to.equal(0)
-    expect(tree._root.values[0].end).to.equal(50)
-  })
+    expect(tree._root.isEmpty).to.be.false()
+    expect(tree.hasUncachedRange(this.treeRange)).to.be.true()
+    expect(tree.hasUncachedRange(this.diffChrRange)).to.be.false()
+    expect(tree.getUncachedRange(this.treeRange)
+      .map(range => range.toString())
+    ).to.eql([this.treeRange.toString()])
+    expect(tree.getUncachedRange(this.diffChrRange)
+      .map(range => range.toString())
+    ).to.eql([])
 
-  it('New sample tree with given branching factor', function () {
-    let props = {
-      branchingFactor: 3
-    }
-    let tree = new SampleTree(this.treeRange, props)
-    expect(tree).to.be.instanceOf(GiveTree)
+    tree.insert(dataArray, this.treeRange)
+    expect(tree._root.childNum).to.equal(7)
+    expect(tree._root.reverseDepth).to.equal(0)
+    expect(tree._root.values[0].start).to.equal(0)
+    expect(tree._root.values[1].start).to.equal(4)
+    expect(tree._root.values[1].startList).to.eql(this.dataArray.slice(1, 3))
+    expect(tree._root.values[5].startList).to.eql(this.dataArray.slice(7, 9))
+    expect(tree.hasUncachedRange(this.treeRange)).to.be.false()
   })
 })
