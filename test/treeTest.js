@@ -23,7 +23,7 @@ describe('Give tree tests', function () {
       new ChromRegion('chr1:5-1000(+)', null, {
         flag1: 'dataFlag1-1-2'
       }),
-      new ChromRegion('chr1:10-12(+)', null, {
+      new ChromRegion('chr1:10-11(+)', null, {
         flag1: 'dataFlag1-2'
       }),
       new ChromRegion('chr1:12-1200(-)', null, {
@@ -58,6 +58,19 @@ describe('Give tree tests', function () {
       tree._root.truncateChrRange(this.nonOverlappingRange, true, true, false)
     ).to.throw()
     expect(tree._root.isEmpty).to.be.false()
+    expect(tree._root.getUncachedRange(new ChromRegion('chr1:300-1000'), {
+      _result: [
+        new ChromRegion('chr1:123-234'),
+        new ChromRegion('chr1:240-299'),
+        new ChromRegion('chr1:301-500'),
+        new ChromRegion('chr1:505-1200'),
+        new ChromRegion('chr1:1230-1500')
+      ]
+    })).to.eql([
+      new ChromRegion('chr1:123-234'),
+      new ChromRegion('chr1:240-1200'),
+      new ChromRegion('chr1:1230-1500')
+    ])
     expect(tree.hasUncachedRange(this.treeRange)).to.be.true()
     expect(tree.hasUncachedRange(this.diffChrRange)).to.be.false()
     expect(tree.getUncachedRange(this.treeRange)
@@ -66,14 +79,26 @@ describe('Give tree tests', function () {
     expect(tree.getUncachedRange(this.diffChrRange)
       .map(range => range.toString())
     ).to.eql([])
+    expect(() => tree.insert(dataArray[0])).to.throw()
+
+    tree.insert(dataArray.slice(3, 4), null, {
+      continuedList: dataArray.slice(1, 3)
+    })
+    expect(tree._root.childNum).to.equal(3)
+
+    tree.insert(dataArray)
+    expect(tree._root.childNum).to.equal(8)
 
     tree.insert(dataArray, this.treeRange)
     expect(tree._root.childNum).to.equal(7)
     expect(tree._root.reverseDepth).to.equal(0)
     expect(tree._root.values[0].start).to.equal(0)
     expect(tree._root.values[1].start).to.equal(4)
-    expect(tree._root.values[1].startList).to.eql(this.dataArray.slice(1, 3))
-    expect(tree._root.values[5].startList).to.eql(this.dataArray.slice(7, 9))
+    expect(tree._root.values[1].startList)
+      .to.have.members(this.dataArray.slice(1, 3))
+    expect(tree._root.values[5].startList)
+      .to.have.members(this.dataArray.slice(7, 9))
     expect(tree.hasUncachedRange(this.treeRange)).to.be.false()
+    expect(tree.hasUncachedRange(this.dataArray[7])).to.be.false()
   })
 })
