@@ -65,7 +65,12 @@ describe('Test if the code complains for missing required implementation',
     })
 
     it('GiveTree and GiveNonLeafNode without neighbor links', function () {
-      let newTree = new GiveTree(this.treeRange, GiveNonLeafNode)
+      class NonLeafNodeNonImpl extends GiveNonLeafNode { }
+      class LeafNodeNonImpl extends GiveTreeNode { }
+      let newTree = new GiveTree(this.treeRange, {
+        NonLeafNodeCtor: NonLeafNodeNonImpl,
+        LeafNodeCtor: LeafNodeNonImpl
+      })
       expect(newTree.coveringRange.equalTo(this.treeRange)).to.be.true()
       expect(newTree._currGen).to.equal(0)
       expect(newTree._root.childNum).to.equal(1)
@@ -97,8 +102,10 @@ describe('Test if the code complains for missing required implementation',
       expect(() => (newTree._root.next = newNode)).to.throw()
       expect(() => (newTree._root.prev = newNode)).to.throw()
 
-      let newNoWitherTree = new GiveTree(this.treeRange, GiveNonLeafNode, {
-        lifeSpan: 0
+      let newNoWitherTree = new GiveTree(this.treeRange, {
+        lifeSpan: 0,
+        NonLeafNodeCtor: NonLeafNodeNonImpl,
+        LeafNodeCtor: LeafNodeNonImpl
       })
       expect(newNoWitherTree._currGen).to.be.null()
     })
