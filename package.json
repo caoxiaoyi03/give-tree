@@ -28,14 +28,15 @@
     "@babel/preset-env": "^7.4.5",
     "chai": "^4.2.0",
     "dirty-chai": "^2.0.1",
+    "eslint": "^5.16.0",
     "grunt": "^1.0.4",
     "grunt-babel": "^8.0.0",
-    "mocha": "^5.2.0",
+    "mocha": "^6.1.4",
     "nyc": "^14.1.1",
     "standard": "^12.0.1"
   },
   "dependencies": {
-    "@givengine/chrom-region": "^0.3.10",
+    "@givengine/chrom-region": "^0.4.1",
     "@log4js-node/log4js-api": "^1.0.2"
   },
   "standard": {
