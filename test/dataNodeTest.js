@@ -49,7 +49,7 @@ describe('Data Node tests', function () {
     expect(new DataNode(this.testNode)).to.be.eql(this.testNode)
   })
 
-  it('Insert data into testNode', function () {
+  it('Insert data', function () {
     let insertCallbackContainer = []
     let dataArrayInsert = this.dataArray.slice()
     let props = {
@@ -101,7 +101,7 @@ describe('Data Node tests', function () {
     expect(this.testNode.isEmpty).to.be.true()
   })
 
-  it('Insert data into testNode with dataIndex and continuedList', function () {
+  it('Insert data with dataIndex and continuedList', function () {
     let insertCallbackContainer = []
     let dataArrayInsert = this.dataArray.slice()
     let props = {
@@ -164,7 +164,7 @@ describe('Data Node tests', function () {
     expect(this.testNode.isEmpty).to.be.true()
   })
 
-  it('Remove data from testNode', function () {
+  it('Remove data', function () {
     let props = {
       continuedList: [
         new ChromRegion('chr1:1-1200', null, {

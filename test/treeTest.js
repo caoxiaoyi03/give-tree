@@ -30,7 +30,7 @@ describe('Give tree tests', function () {
       new ChromRegion('chr1:12-1200(-)', null, {
         flag1: 'dataFlag 4-0'
       }),
-      new ChromRegion('chr1:12-1200(+)', null, {
+      new ChromRegion('chr1:12-1201(+)', null, {
         flag1: 'dataFlag 4-1'
       }),
       new ChromRegion('chr1:51-100', null, {
@@ -64,10 +64,26 @@ describe('Give tree tests', function () {
   })
 
   describe('New sample non-local tree.', function () {
-    it('Insert.', function () {
+    it('Insert, clear and data consistency.', function () {
       let tree = new SampleTree(this.treeRange)
       let dataArray = this.dataArray.slice()
       let insertCallbackContainer = []
+      let additionalArgs = ['arg1', 2, 'arg3', null]
+      let insertCallback = (chrRegion, chrRange, props, ...args) => (
+        insertCallbackContainer.push({
+          regionString: chrRegion.toString(),
+          args
+        })
+      )
+
+      let expectedArray = this.dataArray.map(entry => ({
+        regionString: entry.toString(),
+        args: []
+      }))
+      let expectedArrayWithArgs = this.dataArray.map(entry => ({
+        regionString: entry.toString(),
+        args: additionalArgs
+      }))
 
       expect(tree).to.be.instanceOf(GiveTree)
       expect(() =>
@@ -100,14 +116,12 @@ describe('Give tree tests', function () {
 
       tree.insert(dataArray.slice(3, 4), null, {
         continuedList: dataArray.slice(1, 3).map(region => region.clone()),
-        callback: chrRegion => (
-          insertCallbackContainer.push(chrRegion.toString())
-        )
+        callback: insertCallback
       })
       expect(tree._root.childNum).to.equal(3)
-      expect(insertCallbackContainer).to.eql([
-        'chr1:10-11 (+)'
-      ])
+      expect(insertCallbackContainer).to.eql(
+        [2, 1, 3].map(index => expectedArray[index])
+      )
       expect(tree._root.values[1].continuedList)
         .to.not.have.members(this.dataArray.slice(1, 3))
       expect(tree._root.values[1].continuedList)
@@ -115,34 +129,26 @@ describe('Give tree tests', function () {
 
       insertCallbackContainer = []
       tree.insert(dataArray.slice(0, 3), new ChromRegion('chr1:5-9'), {
-        callback: chrRegion => (
-          insertCallbackContainer.push(chrRegion.toString())
-        )
+        callback: insertCallback
       })
-      expect(insertCallbackContainer).to.eql([
-        'chr1:3-9',
-        'chr1:5-100 (+)',
-        'chr1:5-150 (-)'
-      ])
+      expect(insertCallbackContainer).to.eql(
+        [0, 2, 1].map(index => expectedArray[index])
+      )
+
+      expect(() => tree.insert(dataArray.slice(4, 5), null, {
+        callback: insertCallback,
+        continuedList: [
+          new ChromRegion('chr1: 6-10')
+        ]
+      })).to.throw()
 
       insertCallbackContainer = []
       tree.insert(dataArray, null, {
-        callback: chrRegion => (
-          insertCallbackContainer.push(chrRegion.toString())
-        )
-      })
-      expect(insertCallbackContainer).to.eql([
-        'chr1:3-9',
-        'chr1:5-100 (+)',
-        'chr1:5-150 (-)',
-        'chr1:10-11 (+)',
-        'chr1:12-1200 (+)',
-        'chr1:12-1200 (-)',
-        'chr1:51-100',
-        'chr1:123-456 (-)',
-        'chr1:123-789 (+)',
-        'chr1:234-789'
-      ])
+        callback: insertCallback
+      }, ...additionalArgs)
+      expect(insertCallbackContainer).to.eql(
+        [0, 4, 5, 6, 7, 8, 9].map(index => expectedArrayWithArgs[index])
+      )
       expect(tree._root.childNum).to.equal(9)
 
       insertCallbackContainer = []
@@ -172,6 +178,12 @@ describe('Give tree tests', function () {
       expect(tree.hasUncachedRange(this.treeRange)).to.be.false()
       expect(tree.hasUncachedRange(this.dataArray[7])).to.be.false()
       expect(() => tree._root._splitChild(7, 500)).to.throw()
+
+      tree.clear()
+      expect(tree.hasUncachedRange(this.treeRange)).to.be.true()
+      expect(tree.hasUncachedRange(this.diffChrRange)).to.be.false()
+      expect(tree.getUncachedRange(this.treeRange))
+        .to.eql([this.treeRange])
     })
 
     it('Traverse.', function () {
@@ -184,19 +196,19 @@ describe('Give tree tests', function () {
         args: []
       }))
       let traverseContainer = []
-      let alwaysTraverseCallback = (chrRegion, props, ...args) =>
+      let alwaysTraverseCallback = (chrRegion, chrRange, props, ...args) =>
         traverseContainer.push({
           'regionString': chrRegion.toString(),
           args
         })
-      let breakTraverseCallback = (chrRegion, props, ...args) =>
+      let breakTraverseCallback = (chrRegion, chrRange, props, ...args) =>
         (chrRegion.flag1 !== 'dataFlag 6-0' &&
           traverseContainer.push({
             'regionString': chrRegion.toString(),
             args
           })
         )
-      let earlyBreakTraverseCallback = (chrRegion, props, ...args) =>
+      let earlyBreakTraverseCallback = (chrRegion, chrRange, props, ...args) =>
         (chrRegion.flag1 !== 'dataFlag 4-0' &&
           traverseContainer.push({
             'regionString': chrRegion.toString(),
@@ -210,7 +222,7 @@ describe('Give tree tests', function () {
         dataCallback: alwaysTraverseCallback
       })).to.be.true()
       expect(traverseContainer).to.eql(
-        [1, 5, 4, 7, 8].map(entry => dataCallbackExpected[entry]))
+        [1, 4, 5, 7, 8].map(entry => dataCallbackExpected[entry]))
 
       traverseContainer.length = 0
       expect(tree.traverse(new ChromRegion('chr1: 1-2'), {
@@ -224,14 +236,14 @@ describe('Give tree tests', function () {
         dataCallback: alwaysTraverseCallback
       })).to.be.true()
       expect(traverseContainer).to.eql(
-        [2, 1, 5, 4, 6, 7, 8].map(entry => dataCallbackExpected[entry]))
+        [2, 1, 4, 5, 6, 7, 8].map(entry => dataCallbackExpected[entry]))
       traverseContainer.length = 0
 
       expect(tree.traverse(new ChromRegion('chr1: 50-200'), {
         dataCallback: breakTraverseCallback
       })).to.be.true()
       expect(traverseContainer).to.eql(
-        [2, 1, 5, 4, 6, 8].map(entry => dataCallbackExpected[entry]))
+        [2, 1, 4, 5, 6, 8].map(entry => dataCallbackExpected[entry]))
       traverseContainer.length = 0
 
       expect(tree.traverse(new ChromRegion('chr1: 50-200'), {
@@ -239,7 +251,7 @@ describe('Give tree tests', function () {
         dataCallback: breakTraverseCallback
       })).to.be.false()
       expect(traverseContainer).to.eql(
-        [2, 1, 5, 4, 6].map(entry => dataCallbackExpected[entry])
+        [2, 1, 4, 5, 6].map(entry => dataCallbackExpected[entry])
       )
       traverseContainer.length = 0
 
@@ -270,7 +282,7 @@ describe('Give tree tests', function () {
         dataCallback: breakTraverseCallback
       }, 'test1', 'test2', 3)).to.be.false()
       expect(traverseContainer).to.eql(
-        [2, 1, 5, 4, 6].map(entry =>
+        [2, 1, 4, 5, 6].map(entry =>
           Object.assign(Object.assign({}, dataCallbackExpected[entry]), {
             args: ['test1', 'test2', 3]
           }))
