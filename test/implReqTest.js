@@ -1,6 +1,7 @@
-const GiveTree = require('../lib/giveTree')
-const GiveTreeNode = require('../lib/giveTreeNode')
-const GiveNonLeafNode = require('../lib/giveNonLeafNode')
+const GiveTrees = require('../')
+const GiveTree = GiveTrees.GiveTree
+const GiveTreeNode = GiveTrees.GiveTreeNode
+const GiveNonLeafNode = GiveTrees.GiveNonLeafNode
 
 const chai = require('chai')
 const dirtyChai = require('dirty-chai')
@@ -58,7 +59,9 @@ describe('Test if the code complains for missing required implementation',
       expect(() => newNode.insert(this.dataArray, this.treeRange)).to.throw()
       expect(() => newNode.remove(this.dataArray[0])).to.throw()
       expect(() => newNode.clear()).to.throw()
-      expect(() => newNode.traverse(this.treeRange, () => true)).to.throw()
+      expect(() => newNode.traverse(this.treeRange, {
+        dataCallback: () => true
+      })).to.throw()
       expect(() => newNode.getUncachedRange(this.treeRange)).to.throw()
       expect(() => newNode.hasUncachedRange(this.treeRange)).to.throw()
       expect(() => newNode.isEmpty).to.throw()

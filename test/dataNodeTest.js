@@ -1,4 +1,4 @@
-const DataNode = require('../index').DataNode
+const DataNode = require('../').DataNode
 const chai = require('chai')
 const dirtyChai = require('dirty-chai')
 chai.use(dirtyChai)
@@ -44,7 +44,7 @@ describe('Data Node tests', function () {
       new ChromRegion('chr1:1-1000000'), null, {}
     )).to.eql([])
     expect(this.testNode.isEmpty).to.be.true()
-    this.testNode.insert([])
+    this.testNode.insert([], new ChromRegion('chr1:1-1000000'))
     expect(this.testNode.isEmpty).to.be.true()
     expect(new DataNode(this.testNode)).to.be.eql(this.testNode)
   })
@@ -57,8 +57,9 @@ describe('Data Node tests', function () {
         insertCallbackContainer.push(chrRegion.toString())
       )
     }
-    expect(this.testNode.insert(dataArrayInsert, null, props))
-      .to.equal(this.testNode)
+    expect(this.testNode.insert(dataArrayInsert,
+      new ChromRegion('chr1:1-1000000'), props)
+    ).to.equal(this.testNode)
     expect(this.testNode.startList).to.eql([
       new ChromRegion('chr1:123-456(-)', null, {
         flag1: 'dataFlag1-4'
@@ -120,8 +121,9 @@ describe('Data Node tests', function () {
       ],
       dataIndex: 1
     }
-    expect(this.testNode.insert(dataArrayInsert, null, props))
-      .to.equal(this.testNode)
+    expect(this.testNode.insert(dataArrayInsert,
+      new ChromRegion('chr1:1-10000'), props)
+    ).to.equal(this.testNode)
     expect(this.testNode.startList).to.eql([
       new ChromRegion('chr1:123-456(-)', null, {
         flag1: 'dataFlag1-4'
@@ -174,7 +176,7 @@ describe('Data Node tests', function () {
       ],
       dataIndex: 0
     }
-    this.testNode.insert(this.dataArray, null, props)
+    this.testNode.insert(this.dataArray, new ChromRegion('chr1:1-10000'), props)
     let removeCallbackContainer = []
     let dataToRemove = new ChromRegion('chr1:123-789', null, {
       flag2: 'dataFlag2-1'
@@ -215,14 +217,14 @@ describe('Data Node tests', function () {
       'chr1:123-789', 'chr1:1-1200', 'chr1:12-1200 (-)', 'chr1:123-456 (-)'
     ])
     expect(this.testNode.isEmpty).to.be.true()
-    this.testNode.insert(this.dataArray, null, props)
+    this.testNode.insert(this.dataArray, new ChromRegion('chr1:1-10000'), props)
     expect(this.testNode.remove(dataToRemove, rmProps))
     expect(this.testNode.startList).to.eql([])
     this.testNode.clear()
-    this.testNode.insert(this.dataArray, null, props)
+    this.testNode.insert(this.dataArray, new ChromRegion('chr1:1-10000'), props)
     expect(this.testNode.remove(this.testNode, true)).to.be.false()
     expect(this.testNode.isEmpty).to.be.true()
-    this.testNode.insert(this.dataArray, null, props)
+    this.testNode.insert(this.dataArray, new ChromRegion('chr1:1-10000'), props)
     expect(this.testNode.remove(this.testNode, false)).to.be.false()
     expect(this.testNode.isEmpty).to.be.true()
   })
@@ -239,7 +241,7 @@ describe('Data Node tests', function () {
       ],
       dataIndex: 0
     }
-    this.testNode.insert(this.dataArray, null, props)
+    this.testNode.insert(this.dataArray, new ChromRegion('chr1:1-10000'), props)
     let traverseContainer = []
     let alwaysTraverseCallback = (chrRegion, chrRange, props, ...args) =>
       traverseContainer.push({
@@ -351,10 +353,11 @@ describe('Data Node tests', function () {
     }])
     traverseContainer.length = 0
 
-    expect(this.testNode.traverse(
-      new ChromRegion('chr1: 50-200'), breakTraverseCallback,
-      strandAlwaysPassFilter, true, {}, 'test1', 'test2', 3
-    )).to.be.false()
+    expect(this.testNode.traverse(new ChromRegion('chr1: 50-200'), {
+      dataCallback: breakTraverseCallback,
+      dataFilter: strandAlwaysPassFilter,
+      breakOnFalse: true
+    }, 'test1', 'test2', 3)).to.be.false()
     expect(traverseContainer).to.eql([{
       regionString: 'chr1:1-1200',
       args: ['test1', 'test2', 3]
@@ -364,20 +367,23 @@ describe('Data Node tests', function () {
     }])
     traverseContainer.length = 0
 
-    expect(this.testNode.traverse(
-      new ChromRegion('chr1: 50-200'), earlyBreakTraverseCallback,
-      strandFilter, true, { notFirstCall: true }
-    )).to.be.true()
+    expect(this.testNode.traverse(new ChromRegion('chr1: 50-200'), {
+      dataCallback: earlyBreakTraverseCallback,
+      dataFilter: strandFilter,
+      breakOnFalse: true,
+      notFirstCall: true
+    })).to.be.true()
     expect(traverseContainer).to.eql([{
       regionString: 'chr1:123-789',
       args: []
     }])
     traverseContainer.length = 0
 
-    expect(this.testNode.traverse(
-      new ChromRegion('chr1: 50-200'), earlyBreakTraverseCallback,
-      strandAlwaysPassFilter, true, {}, 'test1', 'test2', 3
-    )).to.be.false()
+    expect(this.testNode.traverse(new ChromRegion('chr1: 50-200'), {
+      dataCallback: earlyBreakTraverseCallback,
+      dataFilter: strandAlwaysPassFilter,
+      breakOnFalse: true
+    }, 'test1', 'test2', 3)).to.be.false()
     expect(traverseContainer).to.eql([{
       regionString: 'chr1:1-1200',
       args: ['test1', 'test2', 3]
@@ -394,9 +400,12 @@ describe('Data Node tests', function () {
     laterDataArray[1].flag1 = 'dataFlag1-2-later'
     let propsPrev = { dataIndex: 0 }
     let propsLater = { dataIndex: 0 }
-    this.testNode.insert(laterDataArray, null, propsLater)
-    prevNode[0].insert(this.dataArray, null, propsPrev)
-    prevNode[1].insert(this.dataArray, null, propsPrev)
+    this.testNode.insert(laterDataArray,
+      new ChromRegion('chr1:1-10000'), propsLater)
+    prevNode[0].insert(this.dataArray,
+      new ChromRegion('chr1:1-10000'), propsPrev)
+    prevNode[1].insert(this.dataArray,
+      new ChromRegion('chr1:1-10000'), propsPrev)
     expect(this.testNode.continuedList).to.have.lengthOf(1)
       .and.to.include.members(laterDataArray.slice(1, 2))
       .and.to.not.include.members(this.dataArray.slice(1, 2))
@@ -408,8 +417,8 @@ describe('Data Node tests', function () {
     expect(prevNode[0].mergeAfter(false)).to.be.true()
     expect(prevNode[0].mergeAfter(prevNode[1])).to.be.true()
 
-    expect(() => this.testNode.updateContinuedList([], true)).to.throw()
-    expect(this.testNode.updateContinuedList())
+    expect(() => this.testNode._updateContinuedList([], true)).to.throw()
+    expect(this.testNode._updateContinuedList())
       .to.be.eql(propsLater.continuedList)
 
     expect(prevNode[0].mergeAfter(this.testNode)).to.be.false()

@@ -1,7 +1,8 @@
-const GiveTree = require('../lib/giveTree')
-const GiveTreeNode = require('../lib/giveTreeNode')
-const GiveNonLeafNode = require('../lib/giveNonLeafNode')
-const DataNode = require('../lib/dataNode')
+const GiveTrees = require('../')
+const GiveTree = GiveTrees.GiveTree
+const GiveTreeNode = GiveTrees.GiveTreeNode
+const GiveNonLeafNode = GiveTrees.GiveNonLeafNode
+const DataNode = GiveTrees.DataNode
 const SampleTree = require('../lib/sampleTree')
 
 const chai = require('chai')
@@ -110,15 +111,16 @@ describe('Give tree tests', function () {
       expect(tree._root.values[1].continuedList)
         .to.not.have.members(this.dataArray.slice(1, 3))
       expect(tree._root.values[1].continuedList)
-        .to.eql(this.dataArray.slice(1, 3))
+        .to.eql(this.dataArray.slice(1, 3).sort(ChromRegion.compare))
 
       insertCallbackContainer = []
-      tree.insert(dataArray.slice(1, 3), new ChromRegion('chr1:5-9'), {
+      tree.insert(dataArray.slice(0, 3), new ChromRegion('chr1:5-9'), {
         callback: chrRegion => (
           insertCallbackContainer.push(chrRegion.toString())
         )
       })
       expect(insertCallbackContainer).to.eql([
+        'chr1:3-9',
         'chr1:5-100 (+)',
         'chr1:5-150 (-)'
       ])
@@ -134,8 +136,8 @@ describe('Give tree tests', function () {
         'chr1:5-100 (+)',
         'chr1:5-150 (-)',
         'chr1:10-11 (+)',
-        'chr1:12-1200 (-)',
         'chr1:12-1200 (+)',
+        'chr1:12-1200 (-)',
         'chr1:51-100',
         'chr1:123-456 (-)',
         'chr1:123-789 (+)',
@@ -204,85 +206,93 @@ describe('Give tree tests', function () {
       let strandFilter = chrRegion => chrRegion.strand !== false
       let strandAlwaysPassFilter = chrRegion => true
 
-      expect(tree.traverse(
-        new ChromRegion('chr1:140-200'), alwaysTraverseCallback, null, false, {}
-      )).to.be.true()
+      expect(tree.traverse(new ChromRegion('chr1:140-200'), {
+        dataCallback: alwaysTraverseCallback
+      })).to.be.true()
       expect(traverseContainer).to.eql(
-        [1, 4, 5, 7, 8].map(entry => dataCallbackExpected[entry]))
+        [1, 5, 4, 7, 8].map(entry => dataCallbackExpected[entry]))
 
       traverseContainer.length = 0
-      expect(tree.traverse(
-        new ChromRegion('chr1: 1-2'), alwaysTraverseCallback, null, false, {
-          notFirstCall: true
-        }
-      )).to.be.true()
+      expect(tree.traverse(new ChromRegion('chr1: 1-2'), {
+        notFirstCall: true,
+        dataCallback: alwaysTraverseCallback
+      })).to.be.true()
       expect(traverseContainer).to.eql([])
 
-      expect(tree.traverse(
-        new ChromRegion('chr1: 50-200'), alwaysTraverseCallback, null, true, {}
-      )).to.be.true()
+      expect(tree.traverse(new ChromRegion('chr1: 50-200'), {
+        breakOnFalse: true,
+        dataCallback: alwaysTraverseCallback
+      })).to.be.true()
       expect(traverseContainer).to.eql(
-        [2, 1, 4, 5, 6, 7, 8].map(entry => dataCallbackExpected[entry]))
+        [2, 1, 5, 4, 6, 7, 8].map(entry => dataCallbackExpected[entry]))
       traverseContainer.length = 0
 
-      expect(tree.traverse(
-        new ChromRegion('chr1: 50-200'), breakTraverseCallback, null, false, {}
-      )).to.be.true()
+      expect(tree.traverse(new ChromRegion('chr1: 50-200'), {
+        dataCallback: breakTraverseCallback
+      })).to.be.true()
       expect(traverseContainer).to.eql(
-        [2, 1, 4, 5, 6, 8].map(entry => dataCallbackExpected[entry]))
+        [2, 1, 5, 4, 6, 8].map(entry => dataCallbackExpected[entry]))
       traverseContainer.length = 0
 
-      expect(tree.traverse(
-        new ChromRegion('chr1: 50-200'), breakTraverseCallback, null, true, {}
-      )).to.be.false()
+      expect(tree.traverse(new ChromRegion('chr1: 50-200'), {
+        breakOnFalse: true,
+        dataCallback: breakTraverseCallback
+      })).to.be.false()
       expect(traverseContainer).to.eql(
-        [2, 1, 4, 5, 6].map(entry => dataCallbackExpected[entry])
+        [2, 1, 5, 4, 6].map(entry => dataCallbackExpected[entry])
       )
       traverseContainer.length = 0
 
-      expect(tree.traverse(
-        new ChromRegion('chr1: 50-200'), breakTraverseCallback,
-        strandFilter, true, {}
-      )).to.be.true()
+      expect(tree.traverse(new ChromRegion('chr1: 50-200'), {
+        breakOnFalse: true,
+        dataFilter: strandFilter,
+        dataCallback: breakTraverseCallback
+      })).to.be.true()
       expect(traverseContainer).to.eql(
         [2, 5, 6, 8].map(entry => dataCallbackExpected[entry])
       )
       traverseContainer.length = 0
 
-      expect(tree.traverse(
-        new ChromRegion('chr1: 51-200'), breakTraverseCallback,
-        strandFilter, true, { notFirstCall: true }
-      )).to.be.true()
+      expect(tree.traverse(new ChromRegion('chr1: 51-200'), {
+        breakOnFalse: true,
+        dataFilter: strandFilter,
+        dataCallback: breakTraverseCallback,
+        notFirstCall: true
+      })).to.be.true()
       expect(traverseContainer).to.eql(
         [6, 8].map(entry => dataCallbackExpected[entry])
       )
       traverseContainer.length = 0
 
-      expect(tree.traverse(
-        new ChromRegion('chr1: 50-200'), breakTraverseCallback,
-        strandAlwaysPassFilter, true, {}, 'test1', 'test2', 3
-      )).to.be.false()
+      expect(tree.traverse(new ChromRegion('chr1: 50-200'), {
+        breakOnFalse: true,
+        dataFilter: strandAlwaysPassFilter,
+        dataCallback: breakTraverseCallback
+      }, 'test1', 'test2', 3)).to.be.false()
       expect(traverseContainer).to.eql(
-        [2, 1, 4, 5, 6].map(entry =>
+        [2, 1, 5, 4, 6].map(entry =>
           Object.assign(Object.assign({}, dataCallbackExpected[entry]), {
             args: ['test1', 'test2', 3]
           }))
       )
       traverseContainer.length = 0
 
-      expect(tree.traverse(
-        new ChromRegion('chr1: 51-200'), earlyBreakTraverseCallback,
-        strandFilter, true, { notFirstCall: true }
-      )).to.be.true()
+      expect(tree.traverse(new ChromRegion('chr1: 51-200'), {
+        breakOnFalse: true,
+        dataFilter: strandFilter,
+        dataCallback: earlyBreakTraverseCallback,
+        notFirstCall: true
+      })).to.be.true()
       expect(traverseContainer).to.eql(
         [6, 8].map(entry => dataCallbackExpected[entry])
       )
       traverseContainer.length = 0
 
-      expect(tree.traverse(
-        new ChromRegion('chr1: 50-200'), earlyBreakTraverseCallback,
-        strandAlwaysPassFilter, true, {}, 'test1', 'test2', 3
-      )).to.be.false()
+      expect(tree.traverse(new ChromRegion('chr1: 50-200'), {
+        breakOnFalse: true,
+        dataFilter: strandAlwaysPassFilter,
+        dataCallback: earlyBreakTraverseCallback
+      }, 'test1', 'test2', 3)).to.be.false()
       expect(traverseContainer).to.eql(
         [2, 1].map(entry =>
           Object.assign(Object.assign({}, dataCallbackExpected[entry]), {
