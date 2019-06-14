@@ -53,7 +53,7 @@ describe('Data Node tests', function () {
     let insertCallbackContainer = []
     let dataArrayInsert = this.dataArray.slice()
     let props = {
-      callback: chrRegion => (
+      dataCallback: chrRegion => (
         insertCallbackContainer.push(chrRegion.toString())
       )
     }
@@ -105,7 +105,7 @@ describe('Data Node tests', function () {
     let insertCallbackContainer = []
     let dataArrayInsert = this.dataArray.slice()
     let props = {
-      callback: chrRegion => (
+      dataCallback: chrRegion => (
         insertCallbackContainer.push(chrRegion.toString())
       ),
       continuedList: [
@@ -184,7 +184,7 @@ describe('Data Node tests', function () {
     let rmProps = {
       exactMatch: true,
       convertTo: null,
-      callback: chrRegion => (
+      dataCallback: chrRegion => (
         removeCallbackContainer.push(chrRegion.toString())
       )
     }

@@ -1,8 +1,6 @@
 const GiveTrees = require('../')
 const GiveTree = GiveTrees.GiveTree
 const GiveTreeNode = GiveTrees.GiveTreeNode
-const GiveNonLeafNode = GiveTrees.GiveNonLeafNode
-const DataNode = GiveTrees.DataNode
 const SampleTree = require('../lib/sampleTree')
 
 const chai = require('chai')
@@ -15,35 +13,35 @@ const ChromRegion = require('@givengine/chrom-region')
 describe('Give tree tests', function () {
   before('Initialize data array.', function () {
     this.dataArray = [
-      new ChromRegion('chr1:3-9', null, {
+      new ChromRegion('chr1:3-8', null, { // 0
         flag1: 'dataFlag 1-0'
       }),
-      new ChromRegion('chr1:5-150(-)', null, {
+      new ChromRegion('chr1:5-150(-)', null, { // 1
         flag1: 'dataFlag 2-0'
       }),
-      new ChromRegion('chr1:5-100(+)', null, {
+      new ChromRegion('chr1:5-100(+)', null, { // 2
         flag1: 'dataFlag 2-1'
       }),
-      new ChromRegion('chr1:10-11(+)', null, {
+      new ChromRegion('chr1:9-10(+)', null, { // 3
         flag1: 'dataFlag 3-0'
       }),
-      new ChromRegion('chr1:12-1200(-)', null, {
+      new ChromRegion('chr1:12-1200(-)', null, { // 4
         flag1: 'dataFlag 4-0'
       }),
-      new ChromRegion('chr1:12-1201(+)', null, {
+      new ChromRegion('chr1:12-1201(+)', null, { // 5
         flag1: 'dataFlag 4-1'
       }),
-      new ChromRegion('chr1:51-100', null, {
+      new ChromRegion('chr1:51-100', null, { // 6
         flag1: 'dataFlag 5-0'
       }),
-      new ChromRegion('chr1:123-456(-)', null, {
+      new ChromRegion('chr1:123-456(-)', null, { // 7
         flag1: 'dataFlag 6-0'
       }),
-      new ChromRegion('chr1:123-789(+)', null, {
+      new ChromRegion('chr1:123-789(+)', null, { // 8
         flag1: 'dataFlag 6-1',
         flag2: 'dataFlag2 6-1'
       }),
-      new ChromRegion('chr1:234-789', null, {
+      new ChromRegion('chr1:234-789', null, { // 9
         flag1: 'dataFlag 7-0',
         flag2: 'dataFlag2 7-0'
       })
@@ -64,33 +62,58 @@ describe('Give tree tests', function () {
   })
 
   describe('New sample non-local tree.', function () {
-    it('Insert, clear and data consistency.', function () {
-      let tree = new SampleTree(this.treeRange)
-      let dataArray = this.dataArray.slice()
-      let insertCallbackContainer = []
-      let additionalArgs = ['arg1', 2, 'arg3', null]
-      let insertCallback = (chrRegion, chrRange, props, ...args) => (
-        insertCallbackContainer.push({
+    before('Sample tree preparation', function () {
+      this.tree = new SampleTree(this.treeRange)
+      this.additionalArgs = ['arg1', 2, 'arg3', null]
+
+      this.insertCallbackContainer = []
+      this.insertCallback = (chrRegion, chrRange, props, ...args) => (
+        this.insertCallbackContainer.push({
           regionString: chrRegion.toString(),
           args
         })
       )
 
-      let expectedArray = this.dataArray.map(entry => ({
+      this.traverseContainer = []
+      this.alwaysTraverseCallback = (chrRegion, chrRange, props, ...args) =>
+        this.traverseContainer.push({
+          'regionString': chrRegion.toString(),
+          args
+        })
+      this.breakTraverseCallback = (chrRegion, chrRange, props, ...args) =>
+        (chrRegion.flag1 !== 'dataFlag 6-0' &&
+          this.traverseContainer.push({
+            'regionString': chrRegion.toString(),
+            args
+          })
+        )
+      this.earlyBreakTraverseCallback = (chrRegion, chrRange, props, ...args) =>
+        (chrRegion.flag1 !== 'dataFlag 4-0' &&
+          this.traverseContainer.push({
+            'regionString': chrRegion.toString(),
+            args
+          })
+        )
+      this.strandFilter = chrRegion => chrRegion.strand !== false
+      this.strandAlwaysPassFilter = chrRegion => true
+
+      this.expectedArray = this.dataArray.map(entry => ({
         regionString: entry.toString(),
         args: []
       }))
-      let expectedArrayWithArgs = this.dataArray.map(entry => ({
+      this.expectedArrayWithArgs = this.dataArray.map(entry => ({
         regionString: entry.toString(),
-        args: additionalArgs
+        args: this.additionalArgs
       }))
+    })
 
-      expect(tree).to.be.instanceOf(GiveTree)
+    it('UncachedRanges.', function () {
+      expect(this.tree).to.be.instanceOf(GiveTree)
       expect(() =>
-        tree._root.truncateChrRange(this.nonOverlappingRange, true, true, false)
+        this.tree._root.truncateChrRange(this.nonOverlappingRange, true, true, false)
       ).to.throw()
-      expect(tree._root.isEmpty).to.be.false()
-      expect(tree._root.getUncachedRange(new ChromRegion('chr1:300-1000'), {
+      expect(this.tree._root.isEmpty).to.be.false()
+      expect(this.tree._root.getUncachedRange(new ChromRegion('chr1:300-1000'), {
         _result: [
           new ChromRegion('chr1:123-234'),
           new ChromRegion('chr1:240-299'),
@@ -103,215 +126,334 @@ describe('Give tree tests', function () {
         new ChromRegion('chr1:240-1200'),
         new ChromRegion('chr1:1230-1500')
       ])
-      expect(tree.hasUncachedRange(this.treeRange)).to.be.true()
-      expect(tree.hasUncachedRange(this.diffChrRange)).to.be.false()
-      expect(tree.getUncachedRange(this.treeRange)
+      expect(this.tree.hasUncachedRange(this.treeRange)).to.be.true()
+      expect(this.tree.hasUncachedRange(this.diffChrRange)).to.be.false()
+      expect(this.tree.getUncachedRange(this.treeRange)
         .map(range => range.toString())
       ).to.eql([this.treeRange.toString()])
-      expect(tree.getUncachedRange(this.diffChrRange)
+      expect(this.tree.getUncachedRange(this.diffChrRange)
         .map(range => range.toString())
       ).to.eql([])
-      expect(() => tree.insert(dataArray[0])).to.throw()
-      expect(() => tree.insert()).to.throw()
+    })
 
-      tree.insert(dataArray.slice(3, 4), null, {
+    it('Insert and clear.', function () {
+      let dataArray = this.dataArray.slice()
+      expect(() => this.tree.insert(dataArray[0])).to.throw()
+      expect(() => this.tree.insert()).to.throw()
+
+      this.tree.insert(dataArray.slice(3, 4), null, {
         continuedList: dataArray.slice(1, 3).map(region => region.clone()),
-        callback: insertCallback
+        dataCallback: this.insertCallback
       })
-      expect(tree._root.childNum).to.equal(3)
-      expect(insertCallbackContainer).to.eql(
-        [2, 1, 3].map(index => expectedArray[index])
+      expect(this.tree._root.childNum).to.equal(3)
+      expect(this.insertCallbackContainer).to.eql(
+        [2, 1, 3].map(index => this.expectedArray[index])
       )
-      expect(tree._root.values[1].continuedList)
+      expect(this.tree._root.values[1].continuedList)
         .to.not.have.members(this.dataArray.slice(1, 3))
-      expect(tree._root.values[1].continuedList)
+      expect(this.tree._root.values[1].continuedList)
         .to.eql(this.dataArray.slice(1, 3).sort(ChromRegion.compare))
 
-      insertCallbackContainer = []
-      tree.insert(dataArray.slice(0, 3), new ChromRegion('chr1:5-9'), {
-        callback: insertCallback
+      this.insertCallbackContainer.length = 0
+      this.tree.insert(dataArray.slice(0, 3), new ChromRegion('chr1:5-9'), {
+        dataCallback: this.insertCallback
       })
-      expect(insertCallbackContainer).to.eql(
-        [0, 2, 1].map(index => expectedArray[index])
+      expect(this.insertCallbackContainer).to.eql(
+        [0, 2, 1].map(index => this.expectedArray[index])
       )
 
-      expect(() => tree.insert(dataArray.slice(4, 5), null, {
-        callback: insertCallback,
+      expect(() => this.tree.insert(dataArray.slice(4, 5), null, {
+        dataCallback: this.insertCallback,
         continuedList: [
           new ChromRegion('chr1: 6-10')
         ]
       })).to.throw()
 
-      insertCallbackContainer = []
-      tree.insert(dataArray, null, {
-        callback: insertCallback
-      }, ...additionalArgs)
-      expect(insertCallbackContainer).to.eql(
-        [0, 4, 5, 6, 7, 8, 9].map(index => expectedArrayWithArgs[index])
+      this.insertCallbackContainer.length = 0
+      this.tree.insert(dataArray, null, {
+        dataCallback: this.insertCallback
+      }, ...this.additionalArgs)
+      expect(this.insertCallbackContainer).to.eql(
+        [0, 4, 5, 6, 7, 8, 9].map(index => this.expectedArrayWithArgs[index])
       )
-      expect(tree._root.childNum).to.equal(9)
+      expect(this.tree._root.childNum).to.equal(9)
+      expect(dataArray).to.eql([])
 
-      insertCallbackContainer = []
-      tree.insert(dataArray, this.treeRange)
-      expect(insertCallbackContainer).to.eql([])
-      expect(tree._root.childNum).to.equal(8)
-      expect(tree._root.reverseDepth).to.equal(0)
-      expect(tree._root.values[1].start).to.equal(2)
-      expect(tree._root.values[2].start).to.equal(4)
-      expect(tree._root.values[2].startList)
+      this.insertCallbackContainer.length = 0
+      this.tree.insert(dataArray, this.treeRange)
+      expect(this.insertCallbackContainer).to.eql([])
+      expect(this.tree._root.childNum).to.equal(8)
+      expect(this.tree._root.reverseDepth).to.equal(0)
+      expect(this.tree._root.values[1].start).to.equal(2)
+      expect(this.tree._root.values[2].start).to.equal(4)
+      expect(this.tree._root.values[2].startList)
         .to.have.members(this.dataArray.slice(1, 3))
-      expect(tree._root.values[6].startList)
+      expect(this.tree._root.values[6].startList)
         .to.have.members(this.dataArray.slice(7, 9))
-      expect(tree._root.values[3].continuedList)
+      expect(this.tree._root.values[3].continuedList)
         .to.have.members(this.dataArray.slice(1, 3))
-      expect(tree._root.values[4].continuedList)
+      expect(this.tree._root.values[4].continuedList)
         .to.have.members(this.dataArray.slice(1, 3))
-      expect(tree._root.values[5].continuedList)
+      expect(this.tree._root.values[5].continuedList)
         .to.have.members(this.dataArray.slice(1, 3)
           .concat(this.dataArray.slice(4, 6)))
-      expect(tree._root.values[6].continuedList)
+      expect(this.tree._root.values[6].continuedList)
         .to.have.members(this.dataArray.slice(1, 2)
           .concat(this.dataArray.slice(4, 6)))
-      expect(tree._root.values[7].continuedList)
+      expect(this.tree._root.values[7].continuedList)
         .to.have.members(this.dataArray.slice(4, 6)
           .concat(this.dataArray.slice(7, 9)))
-      expect(tree.hasUncachedRange(this.treeRange)).to.be.false()
-      expect(tree.hasUncachedRange(this.dataArray[7])).to.be.false()
-      expect(() => tree._root._splitChild(7, 500)).to.throw()
+      expect(this.tree.hasUncachedRange(this.treeRange)).to.be.false()
+      expect(this.tree.hasUncachedRange(this.dataArray[7])).to.be.false()
+      expect(() => this.tree._root._splitChild(7, 500)).to.throw()
 
-      tree.clear()
-      expect(tree.hasUncachedRange(this.treeRange)).to.be.true()
-      expect(tree.hasUncachedRange(this.diffChrRange)).to.be.false()
-      expect(tree.getUncachedRange(this.treeRange))
+      this.tree.clear()
+      expect(this.tree.hasUncachedRange(this.treeRange)).to.be.true()
+      expect(this.tree.hasUncachedRange(this.diffChrRange)).to.be.false()
+      expect(this.tree.getUncachedRange(this.treeRange))
         .to.eql([this.treeRange])
     })
 
-    it('Traverse.', function () {
-      let tree = new SampleTree(this.treeRange)
+    it('Data consistency during insertion.', function () {
       let dataArray = this.dataArray.slice()
-      tree.insert(dataArray, this.treeRange)
+      let contListClone1 = [1, 4, 5].map(index => dataArray[index].clone())
+      let contListClone2 = [1, 2].map(index => dataArray[index].clone())
+      let contListClone3 = [1, 2].map(index => dataArray[index].clone())
+      expect(contListClone2).to.not.include.any.members(contListClone3)
 
-      let dataCallbackExpected = this.dataArray.map(entry => ({
-        'regionString': entry.toString(),
-        args: []
-      }))
-      let traverseContainer = []
-      let alwaysTraverseCallback = (chrRegion, chrRange, props, ...args) =>
-        traverseContainer.push({
-          'regionString': chrRegion.toString(),
-          args
-        })
-      let breakTraverseCallback = (chrRegion, chrRange, props, ...args) =>
-        (chrRegion.flag1 !== 'dataFlag 6-0' &&
-          traverseContainer.push({
-            'regionString': chrRegion.toString(),
-            args
-          })
-        )
-      let earlyBreakTraverseCallback = (chrRegion, chrRange, props, ...args) =>
-        (chrRegion.flag1 !== 'dataFlag 4-0' &&
-          traverseContainer.push({
-            'regionString': chrRegion.toString(),
-            args
-          })
-        )
-      let strandFilter = chrRegion => chrRegion.strand !== false
-      let strandAlwaysPassFilter = chrRegion => true
+      this.insertCallbackContainer.length = 0
+      this.tree.insert(dataArray.slice(7, 9), new ChromRegion('chr1:123-233'), {
+        dataCallback: this.insertCallback,
+        continuedList: contListClone1.slice()
+      })
+      expect(this.insertCallbackContainer).to.eql(
+        [1, 4, 5, 7, 8].map(index => this.expectedArray[index]))
+      expect(this.tree._root.values[1].continuedList)
+        .to.not.include.members([1, 4, 5].map(index => dataArray[index]))
+      expect(this.tree._root.values[1].continuedList)
+        .to.have.members(contListClone1)
+      expect(this.tree._root.values[1].continuedList)
+        .to.eql([1, 4, 5].map(index => dataArray[index]))
 
-      expect(tree.traverse(new ChromRegion('chr1:140-200'), {
-        dataCallback: alwaysTraverseCallback
+      this.insertCallbackContainer.length = 0
+      this.tree.insert(dataArray.slice(3, 4), null, {
+        dataCallback: this.insertCallback,
+        continuedList: contListClone2.slice()
+      })
+      expect(this.tree._root.childNum).to.equal(5)
+      expect(this.insertCallbackContainer).to.eql(
+        [2, 1, 3].map(index => this.expectedArray[index]))
+      expect(this.tree._root.values[1].continuedList)
+        .to.not.include.any.members([2, 1].map(index => dataArray[index]))
+      expect(this.tree._root.values[1].continuedList)
+        .to.eql([2, 1].map(index => dataArray[index]))
+
+      expect(this.tree._root.values[3].continuedList)
+        .to.not.include.members([1, 4, 5].map(index => dataArray[index]))
+      expect(this.tree._root.values[3].continuedList)
+        .to.include.members([this.tree._root.values[1].continuedList[1]])
+      expect(this.tree._root.values[3].continuedList)
+        .to.not.include.members([contListClone1[0]])
+
+      this.insertCallbackContainer.length = 0
+      this.tree.insert(dataArray.slice(4, 6), new ChromRegion('chr1:12-50'), {
+        dataCallback: this.insertCallback,
+        continuedList: contListClone3.slice()
+      })
+      expect(this.tree._root.childNum).to.equal(7)
+      expect(this.insertCallbackContainer).to.eql(
+        [4, 5].map(index => this.expectedArray[index]))
+      expect(this.tree._root.values[1].continuedList)
+        .to.have.members(contListClone2)
+      expect(this.tree._root.values[1].continuedList)
+        .to.not.include.any.members(contListClone3)
+
+      expect(this.tree._root.values[3].continuedList)
+        .to.not.include.any.members(contListClone3)
+      expect(this.tree._root.values[3].continuedList)
+        .to.have.members(contListClone2)
+
+      expect(this.tree._root.values[5].continuedList)
+        .to.not.include.members([1].map(index => dataArray[index]))
+      expect(this.tree._root.values[5].continuedList)
+        .to.include.members(dataArray.slice(4, 6))
+      expect(this.tree._root.values[5].continuedList)
+        .to.include.members([this.tree._root.values[1].continuedList[1]])
+      expect(this.tree._root.values[5].continuedList)
+        .to.not.include.members([contListClone1[0]])
+      expect(this.tree._root.values[5].continuedList)
+        .to.not.include.members([contListClone3[0]])
+
+      this.insertCallbackContainer.length = 0
+      this.tree.insert(dataArray.slice(1, 3), new ChromRegion('chr1:5-8'), {
+        dataCallback: this.insertCallback,
+        continuedList: [dataArray[0].clone()]
+      })
+      expect(this.tree._root.childNum).to.equal(8)
+      expect(this.insertCallbackContainer).to.eql(
+        [0, 2, 1].map(index => this.expectedArray[index]))
+      expect(this.tree._root.values[1].continuedList)
+        .to.not.include.members([dataArray[0]])
+      expect(this.tree._root.values[1].continuedList)
+        .to.eql([dataArray[0]])
+
+      expect(this.tree._root.values[4].continuedList)
+        .to.not.include.any.members(contListClone2)
+      expect(this.tree._root.values[4].continuedList)
+        .to.have.members(dataArray.slice(1, 3))
+
+      expect(this.tree._root.values[6].continuedList)
+        .to.include.members([1, 4, 5].map(index => dataArray[index]))
+      expect(this.tree._root.values[6].continuedList)
+        .to.include.members([this.tree._root.values[1].startList[1]])
+      expect(this.tree._root.values[6].continuedList)
+        .to.not.include.members([contListClone2[0]])
+
+      this.insertCallbackContainer.length = 0
+      this.tree.insert(dataArray, null, {
+        dataCallback: this.insertCallback
+      }, ...this.additionalArgs)
+      expect(this.tree._root.childNum).to.equal(9)
+      expect(this.insertCallbackContainer).to.eql(
+        [0, 6, 9].map(index => this.expectedArrayWithArgs[index])
+      )
+
+      this.insertCallbackContainer.length = 0
+      this.tree.insert(dataArray, this.treeRange)
+      expect(this.insertCallbackContainer).to.eql([])
+      expect(this.tree._root.childNum).to.equal(8)
+      expect(this.tree._root.reverseDepth).to.equal(0)
+      expect(this.tree._root.values[1].start).to.equal(2)
+      expect(this.tree._root.values[2].start).to.equal(4)
+      expect(this.tree._root.values[2].startList)
+        .to.have.members(this.dataArray.slice(1, 3))
+      expect(this.tree._root.values[6].startList)
+        .to.have.members(this.dataArray.slice(7, 9))
+      expect(this.tree._root.values[3].continuedList)
+        .to.have.members(this.dataArray.slice(1, 3))
+      expect(this.tree._root.values[4].continuedList)
+        .to.have.members(this.dataArray.slice(1, 3))
+      expect(this.tree._root.values[5].continuedList)
+        .to.have.members(this.dataArray.slice(1, 3)
+          .concat(this.dataArray.slice(4, 6)))
+      expect(this.tree._root.values[6].continuedList)
+        .to.have.members(this.dataArray.slice(1, 2)
+          .concat(this.dataArray.slice(4, 6)))
+      expect(this.tree._root.values[7].continuedList)
+        .to.have.members(this.dataArray.slice(4, 6)
+          .concat(this.dataArray.slice(7, 9)))
+      expect(this.tree.hasUncachedRange(this.treeRange)).to.be.false()
+      expect(this.tree.hasUncachedRange(this.dataArray[7])).to.be.false()
+      expect(() => this.tree._root._splitChild(7, 500)).to.throw()
+    })
+
+    it('Traverse.', function () {
+      this.tree.insert(this.dataArray.slice(), this.treeRange)
+
+      expect(() => this.tree.traverse(new ChromRegion('chr1:140-200'), null))
+        .to.throw()
+      expect(this.tree.traverse(new ChromRegion('chr1:140-200'), {
+        nodeCallback: node => true,
+        nodeFilter: node => false
       })).to.be.true()
-      expect(traverseContainer).to.eql(
-        [1, 4, 5, 7, 8].map(entry => dataCallbackExpected[entry]))
+      expect(this.tree.traverse(new ChromRegion('chr2:140-200'), {
+        nodeCallback: node => true,
+        nodeFilter: node => false
+      })).to.be.true()
 
-      traverseContainer.length = 0
-      expect(tree.traverse(new ChromRegion('chr1: 1-2'), {
+      expect(this.tree.traverse(new ChromRegion('chr1:140-200'), {
+        dataCallback: this.alwaysTraverseCallback
+      })).to.be.true()
+      expect(this.traverseContainer).to.eql(
+        [1, 4, 5, 7, 8].map(entry => this.expectedArray[entry]))
+
+      this.traverseContainer.length = 0
+      expect(this.tree.traverse(new ChromRegion('chr1: 1-2'), {
         notFirstCall: true,
-        dataCallback: alwaysTraverseCallback
+        dataCallback: this.alwaysTraverseCallback
       })).to.be.true()
-      expect(traverseContainer).to.eql([])
+      expect(this.traverseContainer).to.eql([])
 
-      expect(tree.traverse(new ChromRegion('chr1: 50-200'), {
+      expect(this.tree.traverse(new ChromRegion('chr1: 50-200'), {
         breakOnFalse: true,
-        dataCallback: alwaysTraverseCallback
+        dataCallback: this.alwaysTraverseCallback
       })).to.be.true()
-      expect(traverseContainer).to.eql(
-        [2, 1, 4, 5, 6, 7, 8].map(entry => dataCallbackExpected[entry]))
-      traverseContainer.length = 0
+      expect(this.traverseContainer).to.eql(
+        [2, 1, 4, 5, 6, 7, 8].map(entry => this.expectedArray[entry]))
+      this.traverseContainer.length = 0
 
-      expect(tree.traverse(new ChromRegion('chr1: 50-200'), {
-        dataCallback: breakTraverseCallback
+      expect(this.tree.traverse(new ChromRegion('chr1: 50-200'), {
+        dataCallback: this.breakTraverseCallback
       })).to.be.true()
-      expect(traverseContainer).to.eql(
-        [2, 1, 4, 5, 6, 8].map(entry => dataCallbackExpected[entry]))
-      traverseContainer.length = 0
+      expect(this.traverseContainer).to.eql(
+        [2, 1, 4, 5, 6, 8].map(entry => this.expectedArray[entry]))
+      this.traverseContainer.length = 0
 
-      expect(tree.traverse(new ChromRegion('chr1: 50-200'), {
+      expect(this.tree.traverse(new ChromRegion('chr1: 50-200'), {
         breakOnFalse: true,
-        dataCallback: breakTraverseCallback
+        dataCallback: this.breakTraverseCallback
       })).to.be.false()
-      expect(traverseContainer).to.eql(
-        [2, 1, 4, 5, 6].map(entry => dataCallbackExpected[entry])
+      expect(this.traverseContainer).to.eql(
+        [2, 1, 4, 5, 6].map(entry => this.expectedArray[entry])
       )
-      traverseContainer.length = 0
+      this.traverseContainer.length = 0
 
-      expect(tree.traverse(new ChromRegion('chr1: 50-200'), {
+      expect(this.tree.traverse(new ChromRegion('chr1: 50-200'), {
         breakOnFalse: true,
-        dataFilter: strandFilter,
-        dataCallback: breakTraverseCallback
+        dataFilter: this.strandFilter,
+        dataCallback: this.breakTraverseCallback
       })).to.be.true()
-      expect(traverseContainer).to.eql(
-        [2, 5, 6, 8].map(entry => dataCallbackExpected[entry])
+      expect(this.traverseContainer).to.eql(
+        [2, 5, 6, 8].map(entry => this.expectedArray[entry])
       )
-      traverseContainer.length = 0
+      this.traverseContainer.length = 0
 
-      expect(tree.traverse(new ChromRegion('chr1: 51-200'), {
+      expect(this.tree.traverse(new ChromRegion('chr1: 51-200'), {
         breakOnFalse: true,
-        dataFilter: strandFilter,
-        dataCallback: breakTraverseCallback,
+        dataFilter: this.strandFilter,
+        dataCallback: this.breakTraverseCallback,
         notFirstCall: true
       })).to.be.true()
-      expect(traverseContainer).to.eql(
-        [6, 8].map(entry => dataCallbackExpected[entry])
+      expect(this.traverseContainer).to.eql(
+        [6, 8].map(entry => this.expectedArray[entry])
       )
-      traverseContainer.length = 0
+      this.traverseContainer.length = 0
 
-      expect(tree.traverse(new ChromRegion('chr1: 50-200'), {
+      expect(this.tree.traverse(new ChromRegion('chr1: 50-200'), {
         breakOnFalse: true,
-        dataFilter: strandAlwaysPassFilter,
-        dataCallback: breakTraverseCallback
-      }, 'test1', 'test2', 3)).to.be.false()
-      expect(traverseContainer).to.eql(
-        [2, 1, 4, 5, 6].map(entry =>
-          Object.assign(Object.assign({}, dataCallbackExpected[entry]), {
-            args: ['test1', 'test2', 3]
-          }))
+        dataFilter: this.strandAlwaysPassFilter,
+        dataCallback: this.breakTraverseCallback
+      }, ...this.additionalArgs)).to.be.false()
+      expect(this.traverseContainer).to.eql(
+        [2, 1, 4, 5, 6].map(entry => this.expectedArrayWithArgs[entry])
       )
-      traverseContainer.length = 0
+      this.traverseContainer.length = 0
 
-      expect(tree.traverse(new ChromRegion('chr1: 51-200'), {
+      expect(this.tree.traverse(new ChromRegion('chr1: 51-200'), {
         breakOnFalse: true,
-        dataFilter: strandFilter,
-        dataCallback: earlyBreakTraverseCallback,
+        dataFilter: this.strandFilter,
+        dataCallback: this.earlyBreakTraverseCallback,
         notFirstCall: true
       })).to.be.true()
-      expect(traverseContainer).to.eql(
-        [6, 8].map(entry => dataCallbackExpected[entry])
+      expect(this.traverseContainer).to.eql(
+        [6, 8].map(entry => this.expectedArray[entry])
       )
-      traverseContainer.length = 0
+      this.traverseContainer.length = 0
 
-      expect(tree.traverse(new ChromRegion('chr1: 50-200'), {
+      expect(this.tree.traverse(new ChromRegion('chr1: 50-200'), {
         breakOnFalse: true,
-        dataFilter: strandAlwaysPassFilter,
-        dataCallback: earlyBreakTraverseCallback
-      }, 'test1', 'test2', 3)).to.be.false()
-      expect(traverseContainer).to.eql(
-        [2, 1].map(entry =>
-          Object.assign(Object.assign({}, dataCallbackExpected[entry]), {
-            args: ['test1', 'test2', 3]
-          }))
+        dataFilter: this.strandAlwaysPassFilter,
+        dataCallback: this.earlyBreakTraverseCallback
+      }, ...this.additionalArgs)).to.be.false()
+      expect(this.traverseContainer).to.eql(
+        [2, 1].map(entry => this.expectedArrayWithArgs[entry])
       )
-      traverseContainer.length = 0
+      this.traverseContainer.length = 0
+    })
+
+    it('Removing nodes from tree.', function () {
+      this.tree.insert(this.dataArray.slice(), this.treeRange)
+      this.tree.remove()
     })
   })
 
