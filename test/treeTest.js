@@ -453,7 +453,8 @@ describe('Give tree tests', function () {
 
     it('Removing nodes from tree.', function () {
       this.tree.insert(this.dataArray.slice(), this.treeRange)
-      this.tree.remove()
+      this.tree.remove(new ChromRegion('chr1: 9-20'))
+      expect(this.tree._root.childNum).to.equal(7)
     })
   })
 
