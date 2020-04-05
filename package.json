@@ -24,14 +24,14 @@
   },
   "homepage": "https://github.com/Zhong-Lab-UCSD/give-tree#readme",
   "devDependencies": {
-    "@babel/core": "^7.4.5",
-    "@babel/preset-env": "^7.4.5",
+    "@babel/core": "^7.9.0",
+    "@babel/preset-env": "^7.9.0",
     "chai": "^4.2.0",
     "dirty-chai": "^2.0.1",
     "eslint": "^5.16.0",
-    "grunt": "^1.0.4",
+    "grunt": "^1.1.0",
     "grunt-babel": "^8.0.0",
-    "mocha": "^6.1.4",
+    "mocha": "^6.2.3",
     "nyc": "^14.1.1",
     "standard": "^12.0.1"
   },
